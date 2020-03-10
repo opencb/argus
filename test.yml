@@ -35,13 +35,24 @@ tests:
           headers:
             Content-Type: application/json
           results:
-            - length(response[0].numMatches, 1)
-#            - contains
-#            - equals
-#            - exist
-#            - empty
-#            - notEmpty
-#            - customFunction
+            - list_length(response[0].results.events, 0, op?)
+            - list_contains(response[], 'RCV1112233')
+            - list_include(response[], ['RCV1112233'])
+            - list_filter(response[], (item) => {item.type !== "ERROR"}))
+            - list_equals(response[], [], order?)
+            - list_sorted(response[0].sort, "ASC")
+#            - dict_equals(response[0].results[0], {})
+#            - starts_with # '^prot'
+#            - contains    # regex?
+#            - ends_with
+            - regex(field, regex)
+#            - equals(str, '')
+            - compare(field, value, operator?)
+            - exists
+#            - empty(field)
+            - not_empty
+            - job_file_exists(field)
+#            - check_no_error_in_event(response[0].results.events)
 
       - id: negative
         pathParams:
