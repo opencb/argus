@@ -1,0 +1,53 @@
+id: projects
+baseUrl: http://bioinfo.hpc.cam.ac.uk/opencga-demo/webservices/rest/v1/projects
+# % of time allowed to deviate from expected time (0-100)
+timeDeviation: 100
+asyncRetryTime: 10
+tests:
+  - id: studies
+    tags: QUICK
+    path: /{projects}/studies
+    method: GET
+    async: false
+    tasks:
+      - id: positive
+        pathParams:
+          projects: exomes_grch37
+#        queryParams:
+#          limit: 5
+#          include: id,name
+#          sid:
+#            file: /path/to/file.tsv
+#            env: OPENCGA_TOKEN
+        matrixParams:
+          include:
+            - id
+            - name
+          exclude:
+            - creationDate
+            - uri
+          limit:
+            - 1
+            - 5
+        validation:
+          # seconds
+          time: 0.05
+          headers:
+            Content-Type: application/json
+          results:
+            - length(response[0].numMatches, 1)
+#            - contains
+#            - equals
+#            - exist
+#            - empty
+#            - notEmpty
+#            - customFunction
+
+      - id: negative
+        pathParams:
+          projects: exomes_grch37
+        queryParams:
+          limit: 1
+          skip: 1
+        validation:
+          time: 0.05
