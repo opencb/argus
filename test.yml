@@ -35,24 +35,20 @@ tests:
           headers:
             Content-Type: application/json
           results:
-            - list_length(response[0].results.events, 0, op?)
-            - list_contains(response[], 'RCV1112233')
-            - list_include(response[], ['RCV1112233'])
-            - list_filter(response[], (item) => {item.type !== "ERROR"}))
-            - list_equals(response[], [], order?)
-            - list_sorted(response[0].sort, "ASC")
+            - compare('queryOptions.limit', 1, 'eq')
+            - compare('queryOptions.limit', 5)
+            - list_length('response[0].result', 1, 'gt')
+
+#            - list_length(response[0].results.events, 0, op?)
+#            - list_contains(response[], 'RCV1112233')
+#            - list_equals(response[], [], True)
+#            - list_sorted(response[0].sort, "ASC")
 #            - dict_equals(response[0].results[0], {})
-#            - starts_with # '^prot'
-#            - contains    # regex?
-#            - ends_with
-            - regex(field, regex)
-#            - equals(str, '')
-            - compare(field, value, operator?)
-            - exists
-#            - empty(field)
-            - not_empty
-            - job_file_exists(field)
-#            - check_no_error_in_event(response[0].results.events)
+#            - match(field, regex)
+#            - compare(field, value, operator?)
+#            - exists
+#            - empty
+#            - job_file_exists(field)
 
       - id: negative
         pathParams:
@@ -62,3 +58,4 @@ tests:
           skip: 1
         validation:
           time: 0.05
+          status_code: 404

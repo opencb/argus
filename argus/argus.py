@@ -2,10 +2,11 @@ import os
 import sys
 import yaml
 import gzip
-import re
 import requests
 from abc import ABC, abstractmethod
 from itertools import product
+
+from validator import Validator
 
 
 class Test:
@@ -35,9 +36,10 @@ class Task:
         return str(self.__dict__)
 
 
-class Parent(ABC):
+class Argus(ABC):
     def __init__(self, test_fpath):
         self.test_fpath = test_fpath
+        self.validator = Validator()
 
         self.id_ = None
         self.base_url = None
@@ -208,64 +210,17 @@ class Parent(ABC):
             raise NotImplementedError(msg)
         self.response = response
 
-    def validate_basic(self):
-        task_time = self.task.validation.get('time')
-        task_headers = self.task.validation.get('headers')
-        task_status_code = self.task.validation.get('status_code')
-
-        # TIME
-        if task_time is not None:
-            request_time = self.response.elapsed.total_seconds()
-            max_time = task_time + task_time*self.time_deviation/100
-            min_time = task_time - task_time*self.time_deviation/100
-            if not min_time < request_time < max_time:
-                sys.stderr.write('NOPE')  # TODO
-
-        # HEADERS
-        if task_headers is not None:
-            for key in task_headers.keys():
-                if key not in self.response.headers.keys() or \
-                        self.response.headers[key] != task_headers[key]:
-                    sys.stderr.write('NOPE')  # TODO
-
-        # STATUS CODE
-        if task_status_code is None:
-            task_status_code = 200
-        if not task_status_code == self.response.status_code:
-            sys.stderr.write('NOPE')  # TODO
-
-
-    @abstractmethod
-    def validate(self):
-        pass
-
-    @abstractmethod
-    def validate_async(self):
-        pass
-
-    @staticmethod
-    def _get_item(path, json_dict):
-        for item in path.split('.'):
-            items = list(filter(None, re.split('\[|\]', item)))
-            key, indexes = items[0], map(int, items[1:])
-            json_dict = json_dict[key]
-            if indexes:
-                for i in indexes:
-                    json_dict = json_dict[i]
-        return json_dict
-
-    def length(self, path, length, json_dict):
-        return len(self._get_item(path, json_dict)) == length
-
     def execute(self):
         for test in self.tests:
             self.test = test
             for task in self.test.tasks:
                 self.task = task
                 self.query()
-                self.validate_basic()
+                self.validator.rest_response = self.response
+                self.validator.validation = self.task.validation
+                self.validator.time_deviation = self.time_deviation
                 if not self.test.async_:
-                    self.validate()
+                    self.validator.validate()
                 else:
                     self.async_jobs.append(
                         {

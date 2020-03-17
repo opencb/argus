@@ -7,11 +7,11 @@ import getpass
 import re
 import time
 
-from parent import Parent
-from validation_result import ValidationResult
+from argus import Argus
+from validator import ValidationResult
 
 
-class Opencga(Parent):
+class Opencga(Argus):
     def __init__(self, test_yml, user):
         super().__init__(test_yml)
 
@@ -40,44 +40,47 @@ class Opencga(Parent):
         return self.headers
 
     def validate(self):
-        res = self.response.json()
-        vr = ValidationResult(
-            id_=self.task.id_,
-            url=self.url,
-            headers=self.headers,
-            api_version=res['apiVersion'],
-            status_code=self.response.status_code,
-            num_results=res['response'][0]['numResults']
-        )
-        self.validation_results.append(vr)
+        pass
+        # res = self.response.json()
+        # print(res)
+        # vr = ValidationResult(
+        #     id_=self.task.id_,
+        #     url=self.url,
+        #     headers=self.headers,
+        #     api_version=res['apiVersion'],
+        #     status_code=self.response.status_code,
+        #     num_results=res['response'][0]['numResults']
+        # )
+        # self.validation_results.append(vr)
 
     def validate_async(self):
-        validation_results = [None]*len(self.async_jobs)
-        finished_jobs = []
-        while True:
-            for i, async_job in enumerate(self.async_jobs):
-                if i in finished_jobs:
-                    continue
-                res_json = async_job['response'].json()
-                job_info = self.get_job_info(
-                    res_json['response'][0]['result'][0]['uuid'],
-                    res_json['response'][0]['result'][0]['studyUuid']
-                )
-                if self.check_job_status(job_info):
-                    vr = ValidationResult(
-                        id_=async_job['task'].id_,
-                        url=async_job['url'],
-                        headers=async_job['headers'],
-                        api_version=res_json['apiVersion'],
-                        status_code=async_job['response'].status_code,
-                        num_results=job_info['response'][0]['numResults']
-                    )
-                    validation_results[i] = vr
-                    finished_jobs.append(i)
-            if None not in validation_results:
-                break
-            time.sleep(self.async_retry_time)
-        self.validation_results += validation_results
+        pass
+        # validation_results = [None]*len(self.async_jobs)
+        # finished_jobs = []
+        # while True:
+        #     for i, async_job in enumerate(self.async_jobs):
+        #         if i in finished_jobs:
+        #             continue
+        #         res_json = async_job['response'].json()
+        #         job_info = self.get_job_info(
+        #             res_json['response'][0]['result'][0]['uuid'],
+        #             res_json['response'][0]['result'][0]['studyUuid']
+        #         )
+        #         if self.check_job_status(job_info):
+        #             vr = ValidationResult(
+        #                 id_=async_job['task'].id_,
+        #                 url=async_job['url'],
+        #                 headers=async_job['headers'],
+        #                 api_version=res_json['apiVersion'],
+        #                 status_code=async_job['response'].status_code,
+        #                 num_results=job_info['response'][0]['numResults']
+        #             )
+        #             validation_results[i] = vr
+        #             finished_jobs.append(i)
+        #     if None not in validation_results:
+        #         break
+        #     time.sleep(self.async_retry_time)
+        # self.validation_results += validation_results
 
     def get_job_info(self, job_id, study_id):
         path = '/jobs/{}/info?study={}'.format(job_id, study_id)
