@@ -1,12 +1,22 @@
 import os
-import sys
 import yaml
 import gzip
-import requests
-from abc import ABC, abstractmethod
+import re
+from abc import ABC
 from itertools import product
 
 from validator import Validator
+from commons import get_item, create_url, query
+
+
+class Suite:
+    def __init__(self, id_, base_url=None, tests=None):
+        self.id_ = id_
+        self.base_url = base_url
+        self.tests = tests
+
+    def __str__(self):
+        return str(self.__dict__)
 
 
 class Test:
@@ -37,37 +47,94 @@ class Task:
 
 
 class Argus(ABC):
-    def __init__(self, test_fpath):
-        self.test_fpath = test_fpath
-        self.validator = Validator()
+    def __init__(self, test_folder, config_fpath):
+        self.test_folder = test_folder
+        self.config_fpath = config_fpath
+        with open(config_fpath, 'r') as fhand:
+            self.config = yaml.safe_load(fhand)
 
-        self.id_ = None
-        self.base_url = None
-        self.async_retry_time = None
-        self.time_deviation = None
-        self.tests = None
-        self.test = None
-        self.task = None
+        self.suites = []
 
+        self.suite_ids = []
         self.test_ids = []
         self.task_ids = []
 
+        self.suite = None
+        self.test = None
+        self.task = None
+        self.token = None
         self.url = None
-        self.headers = None
+        self.headers = {}
         self.response = None
         self.async_jobs = []
         self.validation_results = []
 
-        self._parse_file(self.test_fpath)
+        self._parse_files(self.test_folder)
+        self.add_default_query_params()
+        self.generate_headers()
+        self.generate_token()
 
-    def _parse_file(self, test_fpath):
-        with open(test_fpath, 'r') as fhand:
-            info = yaml.safe_load(fhand)
-        self.id_ = info.get('id')
-        self.base_url = info.get('baseUrl')
-        self.time_deviation = info.get('timeDeviation')
-        self.async_retry_time = info.get('asyncRetryTime')
-        self.tests = [self._parse_test(test) for test in info.get('tests')]
+        self.validator = Validator(config=self.config)
+
+    def add_default_query_params(self):
+        if self.config['rest'] and self.config['rest']['queryParams']:
+            default_params = self.config['rest']['queryParams']
+            for suite in self.suites:
+                for test in suite.tests:
+                    for task in test.tasks:
+                        for key in default_params:
+                            if key not in task.query_params:
+                                task.query_params[key] = default_params[key]
+
+    def generate_headers(self):
+        if self.config['rest'] and self.config['rest']['headers']:
+            self.headers = self.config['rest']['headers']
+
+    @staticmethod
+    def login(auth, field):
+        url = create_url(auth['url'], auth.get('pathParams'),
+                         auth.get('queryParams'))
+        response = query(url, auth.get('method'), auth.get('headers'),
+                         auth.get('body'))
+        return get_item(response.json(), field)
+
+    def generate_token(self):
+        if 'authentication' in self.config:
+            auth = self.config['authentication']
+            token_func = re.findall(r'^(.+)\((.+)\)$', auth['token'])
+            if token_func:
+                if token_func[0][0] == 'env':
+                    self.token = os.environ(token_func[1])
+                elif token_func[0][0] == 'login':
+                    self.token = self.login(auth, token_func[0][1])
+            else:
+                self.token = auth['token']
+            self.headers['Authorization'] = 'Bearer {}'.format(self.token)
+
+    def _parse_files(self, test_folder):
+        fpaths = [os.path.join(test_folder, file)
+                  for file in os.listdir(test_folder)
+                  if os.path.isfile(os.path.join(test_folder, file))]
+        for fpath in fpaths:
+            with open(fpath, 'r') as fhand:
+                suite = yaml.safe_load(fhand)
+            self.suites.append(self._parse_suite(suite))
+
+    def _parse_suite(self, suite):
+        id_ = suite.get('id')
+        if id_ is None:
+            raise ValueError('Field "id" is required for each suite')
+        if id_ in self.suite_ids:
+            raise ValueError('Duplicated suite IDs "{}"'.format(id_))
+        self.suite_ids.append(id_)
+
+        base_url = suite.get('baseUrl')
+
+        tests = [self._parse_test(test) for test in suite.get('tests')]
+
+        suite = Suite(id_=id_, base_url=base_url, tests=tests)
+
+        return suite
 
     def _parse_test(self, test):
         id_ = test.get('id')
@@ -178,58 +245,56 @@ class Argus(ABC):
 
         return tasks
 
-    def create_url(self):
-        url = '/'.join(s.strip('/') for s in [self.base_url, self.test.path])
-        if self.task.path_params is not None:
-            try:
-                url = url.format(**self.task.path_params)
-            except KeyError as e:
-                msg = 'Missing field in pathParams ({})'
-                raise ValueError(msg.format(e))
-        if self.task.query_params is not None:
-            url += '?' + '&'.join(['{}={}'.format(k, self.task.query_params[k])
-                                   for k in self.task.query_params])
-        self.url = url
-
-    @abstractmethod
-    def get_headers(self):
-        pass
-
-    def query(self):
-        self.create_url()
-        headers = self.get_headers()
-        # TODO
-        sys.stderr.write('URL={}; HEADERS={}\n'.format(self.url, headers))
-        if self.test.method.lower() == 'get':
-            response = requests.get(self.url, headers=headers)
-        elif self.test.method.lower() == 'post':
-            response = requests.post(self.url, json=self.task.body,
-                                     headers=headers)
-        else:
-            msg = 'Method "' + self.test.method + '" not implemented.'
-            raise NotImplementedError(msg)
+    def query_task(self):
+        url = '/'.join(s.strip('/') for s in [self.suite.base_url,
+                                              self.test.path])
+        self.url = create_url(url, self.task.path_params,
+                              self.task.query_params)
+        response = query(self.url, self.test.method, self.headers,
+                         self.task.body)
         self.response = response
 
     def execute(self):
-        for test in self.tests:
-            self.test = test
-            for task in self.test.tasks:
-                self.task = task
-                self.query()
-                self.validator.rest_response = self.response
-                self.validator.validation = self.task.validation
-                self.validator.time_deviation = self.time_deviation
-                if not self.test.async_:
-                    self.validator.validate()
-                else:
-                    self.async_jobs.append(
-                        {
-                            'test': self.test,
-                            'task': self.task,
-                            'url': self.url,
-                            'headers': self.headers,
-                            'response': self.response
-                        }
-                    )
-        if self.async_jobs:
-            self.validate_async()
+        for suite in self.suites:
+            self.suite = suite
+            for test in suite.tests:
+                self.test = test
+                for task in self.test.tasks:
+                    self.task = task
+                    self.query_task()
+                    if not self.test.async_:
+                        res = self.validator.validate(self.response,
+                                                      self.task.validation)
+                        print(res)
+                        # vr = ValidationResult(
+                        #     test_id=self.test.id_,
+                        #     task_id=self.task.id_,
+                        #     url=self.url,
+                        #     headers=self.headers,
+                        #     tags=self.test.tags,
+                        #     method=self.test.method,
+                        #     async_=self.test.async_,
+                        #     time=self.response.elapsed.total_seconds(),
+                        #     params=self.test.params,
+                        #     status_code=self.response.status_code,
+                        #     num_results=num_results,
+                        #     num_errors=num_errors,
+                        #     events=events,
+                        #     validation=self.validator.results,
+                        #     status=all(
+                        #         [v['result'] for v in self.validator.results]
+                        #     )
+                        # )
+
+                    else:
+                        self.async_jobs.append(
+                            {
+                                'test': self.test,
+                                'task': self.task,
+                                'url': self.url,
+                                'headers': self.headers,
+                                'response': self.response
+                            }
+                        )
+            if self.async_jobs:
+                pass

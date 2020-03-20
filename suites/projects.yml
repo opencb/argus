@@ -1,8 +1,5 @@
 id: projects
 baseUrl: http://bioinfo.hpc.cam.ac.uk/opencga-demo/webservices/rest/v1/projects
-# % of time allowed to deviate from expected time (0-100)
-timeDeviation: 100
-asyncRetryTime: 10
 tests:
   - id: studies
     tags: QUICK
@@ -40,7 +37,8 @@ tests:
             - list_length('response[0].result', 1, 'gt')
 
 #            - list_length(response[0].results.events, 0, op?)
-#            - list_contains(response[], 'RCV1112233')
+#            - list_contains(response[], 'RCV1112233', expected=False)
+#            - list_apply(response[], 'e: e.type.name != "ERROR" && e.type.code != 3', all_=True)
 #            - list_equals(response[], [], True)
 #            - list_sorted(response[0].sort, "ASC")
 #            - dict_equals(response[0].results[0], {})
@@ -48,7 +46,7 @@ tests:
 #            - compare(field, value, operator?)
 #            - exists
 #            - empty
-#            - job_file_exists(field)
+#            - custom(field)
 
       - id: negative
         pathParams:
