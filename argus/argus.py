@@ -2,11 +2,16 @@ import os
 import yaml
 import gzip
 import re
+import sys
+import json
 from abc import ABC
 from itertools import product
+from datetime import datetime
 
 from validator import Validator
+from validation_result import ValidationResult
 from commons import get_item, create_url, query
+from argusCLI import ArgusCLI
 
 
 class Suite:
@@ -47,11 +52,18 @@ class Task:
 
 
 class Argus(ABC):
-    def __init__(self, test_folder, config_fpath):
+    def __init__(self, test_folder, config_fpath, out_fpath=None):
         self.test_folder = test_folder
         self.config_fpath = config_fpath
         with open(config_fpath, 'r') as fhand:
             self.config = yaml.safe_load(fhand)
+
+        if out_fpath is None:
+            t = datetime.now().strftime('%Y%m%d%H%M%S')
+            self.out_fpath = os.path.join(test_folder,
+                                          'argus_out_' + t + '.json')
+        else:
+            self.out_fpath = out_fpath
 
         self.suites = []
 
@@ -70,13 +82,13 @@ class Argus(ABC):
         self.validation_results = []
 
         self._parse_files(self.test_folder)
-        self.add_default_query_params()
-        self.generate_headers()
-        self.generate_token()
+        self._add_default_query_params()
+        self._generate_headers()
+        self._generate_token()
 
         self.validator = Validator(config=self.config)
 
-    def add_default_query_params(self):
+    def _add_default_query_params(self):
         if self.config['rest'] and self.config['rest']['queryParams']:
             default_params = self.config['rest']['queryParams']
             for suite in self.suites:
@@ -86,19 +98,19 @@ class Argus(ABC):
                             if key not in task.query_params:
                                 task.query_params[key] = default_params[key]
 
-    def generate_headers(self):
+    def _generate_headers(self):
         if self.config['rest'] and self.config['rest']['headers']:
             self.headers = self.config['rest']['headers']
 
     @staticmethod
-    def login(auth, field):
+    def _login(auth, field):
         url = create_url(auth['url'], auth.get('pathParams'),
                          auth.get('queryParams'))
         response = query(url, auth.get('method'), auth.get('headers'),
                          auth.get('body'))
         return get_item(response.json(), field)
 
-    def generate_token(self):
+    def _generate_token(self):
         if 'authentication' in self.config:
             auth = self.config['authentication']
             token_func = re.findall(r'^(.+)\((.+)\)$', auth['token'])
@@ -106,19 +118,34 @@ class Argus(ABC):
                 if token_func[0][0] == 'env':
                     self.token = os.environ(token_func[1])
                 elif token_func[0][0] == 'login':
-                    self.token = self.login(auth, token_func[0][1])
+                    self.token = self._login(auth, token_func[0][1])
             else:
                 self.token = auth['token']
             self.headers['Authorization'] = 'Bearer {}'.format(self.token)
 
+    # def _filter_suite(self, suite):
+    #     if 'suites' in self.config and suite.id_ not in self.config['suites']:
+    #         return None
+    #     if 'tests' in self.config:
+    #         if 'ignore_method' in self.config['tests']:
+    #             if test.method in self.config['tests']['ignore_method']:
+    #                 return None
+    #
+    #
+    #     return suite
+
     def _parse_files(self, test_folder):
         fpaths = [os.path.join(test_folder, file)
                   for file in os.listdir(test_folder)
-                  if os.path.isfile(os.path.join(test_folder, file))]
+                  if os.path.isfile(os.path.join(test_folder, file)) and
+                  file.endswith('.yml')]
         for fpath in fpaths:
             with open(fpath, 'r') as fhand:
                 suite = yaml.safe_load(fhand)
-            self.suites.append(self._parse_suite(suite))
+            # suite = self._filter_suite(self._parse_suite(suite))
+            suite = self._parse_suite(suite)
+            if suite is not None:
+                self.suites.append(suite)
 
     def _parse_suite(self, suite):
         id_ = suite.get('id')
@@ -130,7 +157,9 @@ class Argus(ABC):
 
         base_url = suite.get('baseUrl')
 
-        tests = [self._parse_test(test) for test in suite.get('tests')]
+        tests = list(filter(
+            None, [self._parse_test(test) for test in suite.get('tests')]
+        ))
 
         suite = Suite(id_=id_, base_url=base_url, tests=tests)
 
@@ -255,6 +284,7 @@ class Argus(ABC):
         self.response = response
 
     def execute(self):
+        validation_results = []
         for suite in self.suites:
             self.suite = suite
             for test in suite.tests:
@@ -265,26 +295,23 @@ class Argus(ABC):
                     if not self.test.async_:
                         res = self.validator.validate(self.response,
                                                       self.task.validation)
-                        print(res)
-                        # vr = ValidationResult(
-                        #     test_id=self.test.id_,
-                        #     task_id=self.task.id_,
-                        #     url=self.url,
-                        #     headers=self.headers,
-                        #     tags=self.test.tags,
-                        #     method=self.test.method,
-                        #     async_=self.test.async_,
-                        #     time=self.response.elapsed.total_seconds(),
-                        #     params=self.test.params,
-                        #     status_code=self.response.status_code,
-                        #     num_results=num_results,
-                        #     num_errors=num_errors,
-                        #     events=events,
-                        #     validation=self.validator.results,
-                        #     status=all(
-                        #         [v['result'] for v in self.validator.results]
-                        #     )
-                        # )
+                        vr = ValidationResult(
+                            test_id=self.test.id_,
+                            task_id=self.task.id_,
+                            url=self.url,
+                            headers=self.headers,
+                            tags=self.test.tags,
+                            method=self.test.method,
+                            async_=self.test.async_,
+                            time=self.response.elapsed.total_seconds(),
+                            params=self.task.query_params,
+                            status_code=self.response.status_code,
+                            validation=res,
+                            status=all(
+                                [v['result'] for v in res]
+                            )
+                        )
+                        validation_results.append(vr)
 
                     else:
                         self.async_jobs.append(
@@ -298,3 +325,20 @@ class Argus(ABC):
                         )
             if self.async_jobs:
                 pass
+
+        with open(self.out_fpath, 'w') as fhand:
+            fhand.write('\n'.join([json.dumps(vr.to_json())
+                                   for vr in validation_results]))
+
+
+def main():
+
+    cli = ArgusCLI()
+    args = cli.parser.parse_args()
+
+    client_generator = Argus(args.suite_dir, args.config, args.output)
+    client_generator.execute()
+
+
+if __name__ == '__main__':
+    sys.exit(main())

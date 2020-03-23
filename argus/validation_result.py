@@ -5,7 +5,7 @@ class ValidationResult:
     def __init__(self, test_id, task_id, url=None, tags=None, method=None,
                  async_=None, time=None, params=None, headers=None,
                  status_code=None, num_results=None, num_errors=None,
-                 events=None, status=None, version=None):
+                 events=None, validation=None, status=None, version=None):
         self.test_id = test_id
         self.task_id = task_id
         self.url = url
@@ -19,9 +19,10 @@ class ValidationResult:
         self.num_results = num_results
         self.num_errors = num_errors
         self.events = events
+        self.validation = validation
         self.status = status
         self.version = version
-        self.timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        self.timestamp = int(datetime.now().strftime('%Y%m%d%H%M%S'))
 
     def to_json(self):
         return self.__dict__
