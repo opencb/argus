@@ -10,7 +10,7 @@ from datetime import datetime
 
 from validator import Validator
 from validation_result import ValidationResult
-from commons import get_item, create_url, query
+from commons import get_item, create_url, query, import_class
 from argusCLI import ArgusCLI
 
 
@@ -86,7 +86,15 @@ class Argus(ABC):
         self._generate_headers()
         self._generate_token()
 
-        self.validator = Validator(config=self.config)
+        if 'validator' in self.config:
+            validator = self.config['validator']
+            cls_name = ''.join(x.title() for x in validator.split('_'))
+            cls = import_class('.'.join([validator, cls_name]))
+            self.validator = cls(config=self.config)
+        else:
+            self.validator = Validator(config=self.config)
+
+        print(self.validator.a)
 
     def _add_default_query_params(self):
         if self.config['rest'] and self.config['rest']['queryParams']:

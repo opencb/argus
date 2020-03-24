@@ -2,7 +2,7 @@
 timeDeviation: 100
 asyncRetryTime: 10
 
-#validator: opencga_validator
+validator: opencga_validator
 
 authentication:
 #  token: ssasasdsadsadasd.sdasd.asdasd

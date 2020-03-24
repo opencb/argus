@@ -2,6 +2,14 @@ import re
 import requests
 
 
+def import_class(name):
+    components = name.split('.')
+    mod = __import__(components[0])
+    for comp in components[1:]:
+        mod = getattr(mod, comp)
+    return mod
+
+
 def get_item(json_dict, field):
     for item in field.split('.'):
         items = list(filter(None, re.split(r'[\[\]]', item)))
