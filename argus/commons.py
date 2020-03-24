@@ -13,6 +13,20 @@ def get_item(json_dict, field):
     return json_dict
 
 
+def dot2python(field):
+    z = []
+    for i, item in enumerate(field.split('.')):
+        if i == 0:
+            z.append(item)
+        else:
+            item_split = item.split('[')
+            key = '["{}"]'.format(item_split[0])
+            z.append(key)
+            if len(item_split) > 1:
+                z.append(item[len(item_split[0]):])
+    return ''.join(z)
+
+
 def create_url(url, path_params, query_params):
     if path_params is not None:
         try:

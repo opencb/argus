@@ -23,10 +23,10 @@ rest:
     limit: 10
     count: False
 
-suites:
- - projects
- - clinical
-
+#suites:
+# - projects
+# - clinical
+#
 #tests:
 #  ignore_async: false
 #  ignore_method: ["POST"]

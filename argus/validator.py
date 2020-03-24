@@ -1,6 +1,6 @@
 import re
 
-from commons import get_item
+from commons import get_item, dot2python
 
 
 class Validator:
@@ -92,8 +92,14 @@ class Validator:
 
     def list_apply(self, field, value, all_=False):
         field_value = get_item(self._rest_response_json, field)
-        if not value.startswith('lambda'):
-            value = 'lambda ' + value
+
+        var = re.findall(' *(.+?) *->', value)[0]
+        regex = '[-+*/=><|! ](' + var + '.+?)[-+*/=><|! ]'
+        variables = re.findall(regex, value)
+        for v in variables:
+            value = value.replace(v, dot2python(v))
+        value = 'lambda ' + value.replace('->', ':')
+
         res = [eval(value)(i) for i in field_value]
         if all_:
             return all(res)
@@ -189,6 +195,6 @@ class Validator:
 
         # Results
         if 'results' in self.validation:
-            results = self._validate_results(self.validation['results'])
+            results += self._validate_results(self.validation['results'])
 
         return results

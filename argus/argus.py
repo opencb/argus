@@ -285,6 +285,7 @@ class Argus(ABC):
 
     def execute(self):
         validation_results = []
+        out_fhand = open(self.out_fpath, 'w')
         for suite in self.suites:
             self.suite = suite
             for test in suite.tests:
@@ -296,6 +297,7 @@ class Argus(ABC):
                         res = self.validator.validate(self.response,
                                                       self.task.validation)
                         vr = ValidationResult(
+                            suite_id=self.suite.id_,
                             test_id=self.test.id_,
                             task_id=self.task.id_,
                             url=self.url,
@@ -326,9 +328,9 @@ class Argus(ABC):
             if self.async_jobs:
                 pass
 
-        with open(self.out_fpath, 'w') as fhand:
-            fhand.write('\n'.join([json.dumps(vr.to_json())
-                                   for vr in validation_results]))
+            out_fhand.write('\n'.join([json.dumps(vr.to_json())
+                                       for vr in validation_results]))
+        out_fhand.close()
 
 
 def main():
