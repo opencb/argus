@@ -102,6 +102,7 @@ class Validator:
     def list_apply(self, field, value, all_=False):
         field_value = get_item(self._rest_response_json, field)
 
+        value = value.replace('lambda', '')
         var = re.findall(' *(.+?) *->', value)[0]
         regex = '[-+*/=><|! ](' + var + '.+?)[-+*/=><|! ]'
         variables = re.findall(regex, value)
@@ -207,3 +208,6 @@ class Validator:
             results += self._validate_results(self.validation['results'])
 
         return results
+
+    def validate_async(self, async_jobs):
+        pass

@@ -4,7 +4,6 @@ import gzip
 import re
 import json
 import importlib
-from abc import ABC
 from itertools import product
 from datetime import datetime
 
@@ -50,7 +49,7 @@ class _Task:
         return str(self.__dict__)
 
 
-class Argus(ABC):
+class Argus:
     def __init__(self, test_folder, config_fpath, out_fpath=None):
         self.test_folder = test_folder
         self.config_fpath = config_fpath
@@ -324,6 +323,7 @@ class Argus(ABC):
                     else:
                         self.async_jobs.append(
                             {
+                                'suite': self.suite,
                                 'test': self.test,
                                 'task': self.task,
                                 'url': self.url,
@@ -332,7 +332,8 @@ class Argus(ABC):
                             }
                         )
             if self.async_jobs:
-                pass
+                async_res = self.validator.validate_async(self.async_jobs)
+                validation_results += async_res
 
             out_fhand.write('\n'.join([json.dumps(vr.to_json())
                                        for vr in validation_results]))
