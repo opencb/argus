@@ -2,19 +2,18 @@ import os
 import yaml
 import gzip
 import re
-import sys
 import json
+import importlib
 from abc import ABC
 from itertools import product
 from datetime import datetime
 
-from validator import Validator
-from validation_result import ValidationResult
-from commons import get_item, create_url, query, import_class
-from argusCLI import ArgusCLI
+from argus.validator import Validator
+from argus.validation_result import ValidationResult
+from argus.utils import get_item, create_url, query
 
 
-class Suite:
+class _Suite:
     def __init__(self, id_, base_url=None, tests=None):
         self.id_ = id_
         self.base_url = base_url
@@ -24,7 +23,7 @@ class Suite:
         return str(self.__dict__)
 
 
-class Test:
+class _Test:
     def __init__(self, id_, tags=None, path=None, method=None, async_=None,
                  tasks=None):
         self.id_ = id_
@@ -38,7 +37,7 @@ class Test:
         return str(self.__dict__)
 
 
-class Task:
+class _Task:
     def __init__(self, id_, path_params=None, query_params=None, body=None,
                  validation=None):
         self.id_ = id_
@@ -88,13 +87,12 @@ class Argus(ABC):
 
         if 'validator' in self.config:
             validator = self.config['validator']
+            module = importlib.import_module('.'.join(['argus', validator]))
             cls_name = ''.join(x.title() for x in validator.split('_'))
-            cls = import_class('.'.join([validator, cls_name]))
-            self.validator = cls(config=self.config)
+            validator_class = getattr(module, cls_name)
+            self.validator = validator_class(config=self.config)
         else:
             self.validator = Validator(config=self.config)
-
-        print(self.validator.a)
 
     def _add_default_query_params(self):
         if self.config['rest'] and self.config['rest']['queryParams']:
@@ -169,7 +167,7 @@ class Argus(ABC):
             None, [self._parse_test(test) for test in suite.get('tests')]
         ))
 
-        suite = Suite(id_=id_, base_url=base_url, tests=tests)
+        suite = _Suite(id_=id_, base_url=base_url, tests=tests)
 
         return suite
 
@@ -190,8 +188,8 @@ class Argus(ABC):
         for task in test.get('tasks'):
             tasks += self._parse_task(task)
 
-        test = Test(id_=id_, tags=tags, path=path, method=method,
-                    async_=async_, tasks=tasks)
+        test = _Test(id_=id_, tags=tags, path=path, method=method,
+                     async_=async_, tasks=tasks)
         return test
 
     @staticmethod
@@ -274,9 +272,9 @@ class Argus(ABC):
 
         # Creating tasks
         tasks = [
-            Task(id_=id_, path_params=path_params,
-                 query_params=query_params_list[i], body=body,
-                 validation=validation)
+            _Task(id_=id_, path_params=path_params,
+                  query_params=query_params_list[i], body=body,
+                  validation=validation)
             for i, id_ in enumerate(id_list)
         ]
 
@@ -303,7 +301,7 @@ class Argus(ABC):
                     self.query_task()
                     if not self.test.async_:
                         res = self.validator.validate(self.response,
-                                                      self.task.validation)
+                                                      self.task)
                         vr = ValidationResult(
                             suite_id=self.suite.id_,
                             test_id=self.test.id_,
@@ -339,16 +337,3 @@ class Argus(ABC):
             out_fhand.write('\n'.join([json.dumps(vr.to_json())
                                        for vr in validation_results]))
         out_fhand.close()
-
-
-def main():
-
-    cli = ArgusCLI()
-    args = cli.parser.parse_args()
-
-    client_generator = Argus(args.suite_dir, args.config, args.output)
-    client_generator.execute()
-
-
-if __name__ == '__main__':
-    sys.exit(main())

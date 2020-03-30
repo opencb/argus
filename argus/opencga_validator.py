@@ -1,4 +1,4 @@
-from validator import Validator
+from argus.validator import Validator
 
 
 class OpencgaValidator(Validator):

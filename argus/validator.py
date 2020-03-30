@@ -1,6 +1,6 @@
 import re
 
-from commons import get_item, dot2python
+from argus.utils import get_item, dot2python
 
 
 class Validator:
@@ -12,6 +12,7 @@ class Validator:
         self._rest_response = None
         self._rest_response_json = None
         self._validation = None
+        self._query_params = None
         self._async_jobs = []
 
     @staticmethod
@@ -41,6 +42,14 @@ class Validator:
         self._validation = validation
 
     @property
+    def query_params(self):
+        return self._query_params
+
+    @query_params.setter
+    def query_params(self, query_params):
+        self._query_params = query_params
+
+    @property
     def async_jobs(self):
         return self._async_jobs
 
@@ -59,9 +68,9 @@ class Validator:
             return a > b
         elif operator in ['>=', 'ge']:
             return a >= b
-        elif operator == ['<', 'lt']:
+        elif operator in ['<', 'lt']:
             return a < b
-        elif operator == ['<=', 'le']:
+        elif operator in ['<=', 'le']:
             return a <= b
 
     def compare(self, field, value, operator='eq'):
@@ -98,9 +107,8 @@ class Validator:
         variables = re.findall(regex, value)
         for v in variables:
             value = value.replace(v, dot2python(v))
-        value = 'lambda ' + value.replace('->', ':')
-
-        res = [eval(value)(i) for i in field_value]
+        lambda_function = 'lambda ' + value.replace('->', ':')
+        res = [eval(lambda_function, {'self': self})(i) for i in field_value]
         if all_:
             return all(res)
         else:
@@ -132,7 +140,7 @@ class Validator:
     def _validate_results(self, methods):
         results = []
         for method in methods:
-            method_parts = re.search(r'^(.+)\((.*)\)$', method)
+            method_parts = re.search(r'^(.+?)\((.*)\)$', method)
             name = method_parts.group(1)
             args = method_parts.group(2)
 
@@ -148,8 +156,8 @@ class Validator:
 
     def validate_time(self, task_time):
         request_time = self._rest_response.elapsed.total_seconds()
-        max_time = task_time + task_time*self.time_deviation/100
-        min_time = task_time - task_time*self.time_deviation/100
+        max_time = task_time + task_time*self.config['time_deviation']/100
+        min_time = task_time - task_time*self.config['time_deviation']/100
         if not min_time < request_time < max_time:
             return False
         return True
@@ -166,10 +174,11 @@ class Validator:
             return False
         return True
 
-    def validate(self, response, validation):
+    def validate(self, response, task):
 
         self.rest_response = response
-        self.validation = validation
+        self.validation = task.validation
+        self.query_params = task.query_params
         results = []
 
         # Time
