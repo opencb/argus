@@ -11,8 +11,7 @@ class Validator:
 
         self._rest_response = None
         self._rest_response_json = None
-        self._validation = None
-        self._query_params = None
+        self._task = None
         self._async_jobs = []
 
     @staticmethod
@@ -34,28 +33,20 @@ class Validator:
         self._rest_response_json = rest_response.json()
 
     @property
-    def validation(self):
-        return self._validation
-
-    @validation.setter
-    def validation(self, validation):
-        self._validation = validation
-
-    @property
-    def query_params(self):
-        return self._query_params
-
-    @query_params.setter
-    def query_params(self, query_params):
-        self._query_params = query_params
-
-    @property
     def async_jobs(self):
         return self._async_jobs
 
     @async_jobs.setter
     def async_jobs(self, async_jobs):
         self._async_jobs = async_jobs
+
+    @property
+    def task(self):
+        return self._task
+
+    @task.setter
+    def task(self, task):
+        self._task = task
 
     @staticmethod
     def num_compare(a, b, operator):
@@ -99,16 +90,24 @@ class Validator:
         else:
             return value not in field_value
 
-    def list_apply(self, field, value, all_=False):
-        field_value = get_item(self._rest_response_json, field)
-
+    @staticmethod
+    def _to_python_lambda(value):
         value = value.replace('lambda', '')
-        var = re.findall(' *(.+?) *->', value)[0]
-        regex = '[-+*/=><|! ](' + var + '.+?)[-+*/=><|! ]'
-        variables = re.findall(regex, value)
+
+        # From dot notation to python notation
+        variables = filter(None, re.split('[-+*/=><|! ]', value))
         for v in variables:
             value = value.replace(v, dot2python(v))
-        lambda_function = 'lambda ' + value.replace('->', ':')
+
+        # Internal variables (e.g. "$QUERY_PARAMS")
+        value = value.replace('$QUERY_PARAMS', 'self.task.query_params')
+
+        value = 'lambda ' + value.replace('->', ':')
+        return value
+
+    def list_apply(self, field, value, all_=False):
+        field_value = get_item(self._rest_response_json, field)
+        lambda_function = self._to_python_lambda(value)
         res = [eval(lambda_function, {'self': self})(i) for i in field_value]
         if all_:
             return all(res)
@@ -176,36 +175,34 @@ class Validator:
         return True
 
     def validate(self, response, task):
-
         self.rest_response = response
-        self.validation = task.validation
-        self.query_params = task.query_params
+        self.task = task
         results = []
 
         # Time
-        if 'time' in self.validation and 'time_deviation' in self.config:
+        if 'time' in task.validation and 'time_deviation' in self.config:
             results.append(
                 {'function': 'validate_time',
-                 'result': self.validate_time(self.validation['time'])}
+                 'result': self.validate_time(task.validation['time'])}
             )
 
         # Headers
-        if 'headers' in self.validation:
+        if 'headers' in task.validation:
             results.append(
                 {'function': 'validate_headers',
-                 'result': self.validate_headers(self.validation['headers'])}
+                 'result': self.validate_headers(task.validation['headers'])}
             )
 
         # Status code
-        task_status_code = self.validation.get('status_code', 200)
+        task_status_code = task.validation.get('status_code', 200)
         results.append(
             {'function': 'validate_status_code',
              'result': self.validate_status_code(task_status_code)}
         )
 
         # Results
-        if 'results' in self.validation:
-            results += self._validate_results(self.validation['results'])
+        if 'results' in task.validation:
+            results += self._validate_results(task.validation['results'])
 
         return results
 

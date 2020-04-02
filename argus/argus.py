@@ -335,6 +335,6 @@ class Argus:
                 async_res = self.validator.validate_async(self.async_jobs)
                 validation_results += async_res
 
-            out_fhand.write('\n'.join([json.dumps(vr.to_json())
-                                       for vr in validation_results]))
+        out_fhand.write('\n'.join([json.dumps(vr.to_json())
+                                   for vr in validation_results]) + '\n')
         out_fhand.close()
