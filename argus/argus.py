@@ -69,7 +69,7 @@ class Argus:
         self.test_ids = []
         self.task_ids = []
 
-        self.suite = None
+        self.current = None
         self.test = None
         self.task = None
         self.token = None
@@ -80,7 +80,6 @@ class Argus:
         self.validation_results = []
 
         self._parse_files(self.test_folder)
-        self._add_default_query_params()
         self._generate_headers()
         self._generate_token()
 
@@ -89,19 +88,13 @@ class Argus:
             module = importlib.import_module('.'.join(['argus', validator]))
             cls_name = ''.join(x.title() for x in validator.split('_'))
             validator_class = getattr(module, cls_name)
-            self.validator = validator_class(config=self.config)
+            self.validator = validator_class(
+                validation=self.config.get('validation')
+            )
         else:
-            self.validator = Validator(config=self.config)
-
-    def _add_default_query_params(self):
-        if self.config['rest'] and self.config['rest']['queryParams']:
-            default_params = self.config['rest']['queryParams']
-            for suite in self.suites:
-                for test in suite.tests:
-                    for task in test.tasks:
-                        for key in default_params:
-                            if key not in task.query_params:
-                                task.query_params[key] = default_params[key]
+            self.validator = Validator(
+                validation=self.config.get('validation')
+            )
 
     def _generate_headers(self):
         if self.config['rest'] and self.config['rest']['headers']:
@@ -128,17 +121,6 @@ class Argus:
                 self.token = auth['token']
             self.headers['Authorization'] = 'Bearer {}'.format(self.token)
 
-    # def _filter_suite(self, suite):
-    #     if 'suites' in self.config and suite.id_ not in self.config['suites']:
-    #         return None
-    #     if 'tests' in self.config:
-    #         if 'ignore_method' in self.config['tests']:
-    #             if test.method in self.config['tests']['ignore_method']:
-    #                 return None
-    #
-    #
-    #     return suite
-
     def _parse_files(self, test_folder):
         fpaths = [os.path.join(test_folder, file)
                   for file in os.listdir(test_folder)
@@ -147,18 +129,23 @@ class Argus:
         for fpath in fpaths:
             with open(fpath, 'r') as fhand:
                 suite = yaml.safe_load(fhand)
-            # suite = self._filter_suite(self._parse_suite(suite))
             suite = self._parse_suite(suite)
             if suite is not None:
                 self.suites.append(suite)
 
     def _parse_suite(self, suite):
+        # Getting suite ID
         id_ = suite.get('id')
         if id_ is None:
             raise ValueError('Field "id" is required for each suite')
         if id_ in self.suite_ids:
             raise ValueError('Duplicated suite IDs "{}"'.format(id_))
         self.suite_ids.append(id_)
+
+        # Filtering suites to run
+        if 'suites' in self.config:
+            if id_ not in self.config['suites']:
+                return None
 
         base_url = suite.get('baseUrl')
 
@@ -171,6 +158,7 @@ class Argus:
         return suite
 
     def _parse_test(self, test):
+        # Getting test ID
         id_ = test.get('id')
         if id_ is None:
             raise ValueError('Field "id" is required for each test')
@@ -178,14 +166,27 @@ class Argus:
             raise ValueError('Duplicated test ID "{}"'.format(id_))
         self.test_ids.append(id_)
 
-        tags = test.get('tags')
+        tags = test.get('tags').split(',') if test.get('tags') else None
         path = test.get('path')
         method = test.get('method')
         async_ = test.get('async')
 
+        # Filtering tests to run
+        if 'validation' in self.config:
+            validation = self.config['validation']
+            if 'ignore_async' in validation:
+                if async_ in validation['ignore_async']:
+                    return None
+            if 'ignore_method' in self.config['validation']:
+                if method in validation['ignore_method']:
+                    return None
+            if 'ignore_tag' in self.config['validation']:
+                if set(tags).intersection(set(validation['ignore_tag'])):
+                    return None
+
         tasks = []
         for task in test.get('tasks'):
-            tasks += self._parse_task(task)
+            tasks += list(filter(None, self._parse_task(task)))
 
         test = _Test(id_=id_, tags=tags, path=path, method=method,
                      async_=async_, tasks=tasks)
@@ -264,6 +265,14 @@ class Argus:
         else:
             query_params_list = [query_params]
 
+        # Adding default queryParams
+        if 'rest' in self.config and self.config['rest']['queryParams']:
+            default_params = self.config['rest']['queryParams']
+            for query_params in query_params_list:
+                for key in default_params:
+                    if key not in query_params:
+                        query_params[key] = default_params[key]
+
         # Generating ID list
         id_list = [
             '{}-{}'.format(id_, i) for i in range(len(query_params_list))
@@ -277,55 +286,44 @@ class Argus:
             for i, id_ in enumerate(id_list)
         ]
 
-        return tasks
+        return list(filter(None, tasks))
 
     def query_task(self):
-        url = '/'.join(s.strip('/') for s in [self.suite.base_url,
-                                              self.test.path])
-        self.url = create_url(url, self.task.path_params,
-                              self.task.query_params)
-        response = query(self.url, self.test.method, self.headers,
-                         self.task.body)
+        url = '/'.join(s.strip('/') for s in [self.current.base_url,
+                                              self.current.tests[0].path])
+        self.url = create_url(url, self.current.tests[0].tasks[0].path_params,
+                              self.current.tests[0].tasks[0].query_params)
+        response = query(self.url, self.current.tests[0].method, self.headers,
+                         self.current.tests[0].tasks[0].body)
         self.response = response
 
     def execute(self):
         validation_results = []
         out_fhand = open(self.out_fpath, 'w')
         for suite in self.suites:
-            self.suite = suite
+            self.current = suite
             for test in suite.tests:
-                self.test = test
-                for task in self.test.tasks:
-                    self.task = task
+                self.current.tests = [test]
+                for task in test.tasks:
+                    self.current.tests[0].tasks = [task]
                     self.query_task()
-                    if not self.test.async_:
-                        res = self.validator.validate(self.response,
-                                                      self.task)
+                    if not self.current.tests[0].async_:
+                        res = self.validator.validate(
+                            self.response, self.current.tests[0].tasks[0]
+                        )
                         vr = ValidationResult(
-                            suite_id=self.suite.id_,
-                            test_id=self.test.id_,
-                            task_id=self.task.id_,
+                            current=self.current,
                             url=self.url,
-                            headers=self.headers,
-                            tags=self.test.tags,
-                            method=self.test.method,
-                            async_=self.test.async_,
-                            time=self.response.elapsed.total_seconds(),
-                            params=self.task.query_params,
-                            status_code=self.response.status_code,
+                            response=self.response,
                             validation=res,
-                            status=all(
-                                [v['result'] for v in res]
-                            )
+                            headers=self.headers,
                         )
                         validation_results.append(vr)
 
                     else:
                         self.async_jobs.append(
                             {
-                                'suite': self.suite,
-                                'test': self.test,
-                                'task': self.task,
+                                'current': self.current,
                                 'url': self.url,
                                 'headers': self.headers,
                                 'response': self.response

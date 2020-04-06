@@ -51,3 +51,19 @@ def query(url, method='GET', headers=None, body=None):
         msg = 'Method "' + method + '" not implemented.'
         raise NotImplementedError(msg)
     return response
+
+
+def num_compare(a, b, operator):
+    a, b = float(a), float(b)
+    if operator in ['=', '==', 'eq']:
+        return a == b
+    elif operator in ['!=', 'ne']:
+        return a != b
+    elif operator in ['>', 'gt']:
+        return a > b
+    elif operator in ['>=', 'ge']:
+        return a >= b
+    elif operator in ['<', 'lt']:
+        return a < b
+    elif operator in ['<=', 'le']:
+        return a <= b

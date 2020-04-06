@@ -1,13 +1,14 @@
 import re
 
-from argus.utils import get_item, dot2python
+from argus.utils import get_item, dot2python, num_compare
+from argus.argus_exceptions import ValidationError
 
 
 class Validator:
-    def __init__(self, config=None):
-        self.config = self.get_default_config()
-        if config is not None:
-            self.config.update(config)
+    def __init__(self, validation=None):
+        self.validation = self.get_default_validation()
+        if validation is not None:
+            self.validation.update(validation)
 
         self._rest_response = None
         self._rest_response_json = None
@@ -15,13 +16,16 @@ class Validator:
         self._async_jobs = []
 
     @staticmethod
-    def get_default_config():
-        # TODO
-        config = {
+    def get_default_validation():
+        validation = {
             'timeDeviation': 100,
-            'asyncRetryTime': 10
+            'asyncRetryTime': 10,
+            'ignore_time': False,
+            'ignore_headers': [],
+            'ignore_results': [],
+            'fail_on_first': False
         }
-        return config
+        return validation
 
     @property
     def rest_response(self):
@@ -48,25 +52,9 @@ class Validator:
     def task(self, task):
         self._task = task
 
-    @staticmethod
-    def num_compare(a, b, operator):
-        a, b = float(a), float(b)
-        if operator in ['=', '==', 'eq']:
-            return a == b
-        elif operator in ['!=', 'ne']:
-            return a != b
-        elif operator in ['>', 'gt']:
-            return a > b
-        elif operator in ['>=', 'ge']:
-            return a >= b
-        elif operator in ['<', 'lt']:
-            return a < b
-        elif operator in ['<=', 'le']:
-            return a <= b
-
     def compare(self, field, value, operator='eq'):
         field_value = get_item(self._rest_response_json, field)
-        return self.num_compare(field_value, value, operator)
+        return num_compare(field_value, value, operator)
 
     def match(self, field, regex):
         field_value = get_item(self._rest_response_json, field)
@@ -81,7 +69,7 @@ class Validator:
 
     def list_length(self, field, value, operator='eq'):
         field_value = get_item(self._rest_response_json, field)
-        return self.num_compare(len(field_value), value, operator)
+        return num_compare(len(field_value), value, operator)
 
     def list_contains(self, field, value, expected=True):
         field_value = get_item(self._rest_response_json, field)
@@ -137,35 +125,44 @@ class Validator:
     def _is_defined(self, method_name):
         return method_name in dir(self)
 
-    def _validate_results(self, methods):
+    def _validate_results(self, methods, exclude=None):
         results = []
         for method in methods:
             method_parts = re.search(r'^(.+?)\((.*)\)$', method)
             name = method_parts.group(1)
             args = method_parts.group(2)
 
+            if name in exclude:
+                continue
+
             if not self._is_defined(name):
                 msg = 'Validation method "{}" not defined'
                 raise AttributeError(msg.format(name))
 
-            results.append(
-                {'function': method,
-                 'result': eval('self.{}({})'.format(name, args))}
-            )
+            # Raise error if fail_on_first is True
+            result = eval('self.{}({})'.format(name, args))
+            if self.validation['fail_on_first'] and not result:
+                msg = 'Validation function "{}" returned False'
+                raise ValidationError(msg.format(method))
+
+            results.append({'function': method, 'result': result})
         return results
 
     def validate_time(self, task_time):
         request_time = self._rest_response.elapsed.total_seconds()
-        max_time = task_time + task_time*self.config['time_deviation']/100
-        min_time = task_time - task_time*self.config['time_deviation']/100
+        time_deviation = self.validation['timeDeviation']
+        max_time = task_time + task_time*time_deviation/100
+        min_time = task_time - task_time*time_deviation/100
         if not min_time < request_time < max_time:
             return False
         return True
 
-    def validate_headers(self, task_headers):
+    def validate_headers(self, task_headers, exclude=None):
         for key in task_headers.keys():
-            if key not in self.rest_response.headers.keys() or \
-                    self.rest_response.headers[key] != task_headers[key]:
+            if key not in exclude and (
+                    key not in self.rest_response.headers.keys() or
+                    self.rest_response.headers[key] != task_headers[key]
+            ):
                 return False
         return True
 
@@ -180,7 +177,7 @@ class Validator:
         results = []
 
         # Time
-        if 'time' in task.validation and 'time_deviation' in self.config:
+        if 'time' in task.validation and not self.validation['ignore_time']:
             results.append(
                 {'function': 'validate_time',
                  'result': self.validate_time(task.validation['time'])}
@@ -188,10 +185,12 @@ class Validator:
 
         # Headers
         if 'headers' in task.validation:
-            results.append(
-                {'function': 'validate_headers',
-                 'result': self.validate_headers(task.validation['headers'])}
+            result_headers = self.validate_headers(
+                task.validation['headers'],
+                exclude=self.validation['ignore_headers']
             )
+            results.append({'function': 'validate_headers',
+                            'result': result_headers})
 
         # Status code
         task_status_code = task.validation.get('status_code', 200)
@@ -202,7 +201,10 @@ class Validator:
 
         # Results
         if 'results' in task.validation:
-            results += self._validate_results(task.validation['results'])
+            results += self._validate_results(
+                task.validation['results'],
+                exclude=self.validation['ignore_results']
+            )
 
         return results
 

@@ -7,8 +7,8 @@ from argus.validation_result import ValidationResult
 
 
 class OpencgaValidator(Validator):
-    def __init__(self, config):
-        super().__init__(config=config)
+    def __init__(self, validation):
+        super().__init__(validation=validation)
 
     @staticmethod
     def get_job_info(job_id, study_id, base_url, headers):
@@ -37,31 +37,23 @@ class OpencgaValidator(Validator):
                 job_response = self.get_job_info(
                     study_id=res_json['response'][0]['result'][0]['study']['id'],
                     job_id=res_json['response'][0]['result'][0]['id'],
-                    base_url=async_job['suite'].base_url,
+                    base_url=async_job['current'].base_url,
                     headers=async_job['headers']
                 )
                 if self.check_job_status(job_response):
-                    res = self.validate(job_response, async_job['task'])
+                    res = self.validate(
+                        job_response, async_job['current'].tests[0].tasks[0]
+                    )
                     vr = ValidationResult(
-                        suite_id=async_job['suite'].id_,
-                        test_id=async_job['test'].id_,
-                        task_id=async_job['task'].id_,
+                        current=async_job['current'],
                         url=async_job['url'],
-                        headers=async_job['headers'],
-                        tags=async_job['test'].tags,
-                        method=async_job['test'].method,
-                        async_=async_job['test'].async_,
-                        time=job_response.elapsed.total_seconds(),
-                        params=async_job['task'].query_params,
-                        status_code=job_response.status_code,
+                        response=job_response,
                         validation=res,
-                        status=all(
-                            [v['result'] for v in res]
-                        )
+                        headers=async_job['headers'],
                     )
                     validation_results[i] = vr
                     finished_jobs.append(i)
             if None not in validation_results:
                 break
-            time.sleep(self.config['async_retry_time'])
+            time.sleep(self.validation['validation']['asyncRetryTime'])
         return validation_results

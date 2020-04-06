@@ -2,25 +2,22 @@ from datetime import datetime
 
 
 class ValidationResult:
-    def __init__(self, suite_id, test_id, task_id, url=None, tags=None,
-                 method=None, async_=None, time=None, params=None,
-                 headers=None, status_code=None, events=None, validation=None,
-                 status=None, version=None):
-        self.suite_id = suite_id
-        self.test_id = test_id
-        self.task_id = task_id
+    def __init__(self, current, url, response, validation, headers=None):
+        self.suite_id = current.id_
+        self.test_id = current.tests[0].id_
+        self.task_id = current.tests[0].tasks[0].id_
         self.url = url
-        self.headers = headers
-        self.tags = tags
-        self.method = method
-        self.async_ = async_
-        self.time = time
-        self.params = params
-        self.status_code = status_code
-        self.events = events
         self.validation = validation
-        self.status = status
-        self.version = version
+        self.headers = headers
+        self.tags = current.tests[0].tags
+        self.method = current.tests[0].method
+        self.async_ = current.tests[0].async_
+        self.time = response.elapsed.total_seconds()
+        self.params = current.tests[0].tasks[0].query_params
+        self.status_code = response.status_code
+        self.status = all([v['result'] for v in validation])
+        self.events = None
+        self.version = None
         self.timestamp = int(datetime.now().strftime('%Y%m%d%H%M%S'))
 
     def to_json(self):

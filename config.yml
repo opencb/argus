@@ -1,43 +1,45 @@
-# % of time allowed to deviate from expected time (0-100)
-
-
+# Custom validator
 validator: opencga_validator
 
+# Authentication info
 authentication:
 #  token: ssasasdsadsadasd.sdasd.asdasd
 #  token: env(OPENCGA_TOKEN)
   token: login(response[0].result[0].token)
   url: http://bioinfo.hpc.cam.ac.uk/opencga-demo/webservices/rest/v1/users/demo/login
-#  headers:
-#    Accept-Encoding: gzip
+  headers:
+    Accept-Encoding: gzip
   method: POST
 #  queryParams:
   body: {password: demo}
 
+# Default rest parameters
 rest:
-#  timeout: 30
   headers:
     Accept-Encoding: gzip
   queryParams:
     limit: 10
     count: False
 
+# Selected suites for testing
 suites:
  - projects
- - clinical
+ - variant
 
+# Test selection
 tests:
   ignore_async: false
   ignore_method: ["POST"]
   ignore_tag: ["SLOW"]
 
+# Validation parameters
 validation:
 
-  timeDeviation: 100
-  asyncRetryTime: 10
+  timeDeviation: 100  # % of time allowed to deviate from expected time (0-100)
+  asyncRetryTime: 10  # retry time for checking asynchronous jobs
 
-  ignore_time: False
+  ignore_time: false
   ignore_headers: []      ## example:  ["Content-Type"]
-  ignore_fields: [""]
+  ignore_results: []
 
   fail_on_first: False
