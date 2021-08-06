@@ -9,15 +9,15 @@ from os import path
 here = path.abspath(path.dirname(__file__))
 
 # Get the long description from the README file
-with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
+with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
-    name='argus',
+    name='dargus',
     version='0.1.0',
     description='A REST client for OpenCGA REST web services',
     long_description=long_description,
-    long_description_content_type='text/x-rst',
+    long_description_content_type='text/markdown',
     url='https://github.com/opencb/argus',
     packages=['argus'],
     scripts=['argus'],
@@ -25,13 +25,13 @@ setup(
     author='Daniel Perez-Gil',
     author_email='dp529@cam.ac.uk',
     classifiers=[
-        'Development Status :: 5 - Production/Stable',
+        'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
         'Topic :: Scientific/Engineering :: Bio-Informatics',
         'License :: OSI Approved :: Apache Software License',
-        'Programming Language :: Python :: 3.6.9',
+        'Programming Language :: Python :: 3.5.0',
     ],
-    keywords='opencb argus bioinformatics rest webservices',
+    keywords='opencb argus bioinformatics rest webservices testing',
     install_requires=[
         'requests >= 2.22',
         'pyyaml >= 3.12'

@@ -1,0 +1,47 @@
+id: variant
+baseUrl: http://bioinfo.hpc.cam.ac.uk/opencga-demo/webservices/rest/v1/analysis/variant
+tests:
+- id: query
+  tags: QUICK
+  path: query
+  method: GET
+  async: false
+  tasks:
+  - id: count
+    queryParams:
+      project: exomes_grch37
+      study: corpasome
+      count: true
+    validation:
+      # seconds
+      time: 0.05
+      headers:
+        Content-Type: application/json
+      results:
+        - list_length('response[0].result', 1, 'eq')
+        - compare('response[0].result[0]', 300711, 'eq')
+  - id: SNV
+    queryParams:
+      project: exomes_grch37
+      study: corpasome
+      type: SNV
+    validation:
+      # seconds
+      time: 2.0
+      headers:
+        Content-Type: application/json
+      results:
+        - list_apply('response[0].result', 'v -> v.type == "SNV"')
+  - id: type
+    queryParams:
+      project: exomes_grch37
+      study: corpasome
+    matrixParams:
+      type: ["SNV","INDEL","SNP"]
+    validation:
+      # seconds
+      time: 2.0
+      headers:
+        Content-Type: application/json
+      results:
+        - list_apply('response[0].result', 'v -> v.type == $QUERY_PARAMS.type')

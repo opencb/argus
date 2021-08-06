@@ -58,8 +58,7 @@ class Argus:
 
         if out_fpath is None:
             t = datetime.now().strftime('%Y%m%d%H%M%S')
-            self.out_fpath = os.path.join(test_folder,
-                                          'argus_out_' + t + '.json')
+            self.out_fpath = os.path.join(test_folder, 'argus_out_' + t + '.json')
         else:
             self.out_fpath = out_fpath
 
@@ -84,10 +83,15 @@ class Argus:
         self._generate_token()
 
         if 'validator' in self.config:
-            validator = self.config['validator']
-            module = importlib.import_module('.'.join(['argus', validator]))
-            cls_name = ''.join(x.title() for x in validator.split('_'))
-            validator_class = getattr(module, cls_name)
+            import importlib.util
+            val_path = self.config['validator']
+            val_fname = os.path.basename(val_path)
+            val_name = val_fname[:-3] if val_fname.endswith('.py') else val_fname
+            cls_name = ''.join(x.title() for x in val_name.split('_'))
+            spec = importlib.util.spec_from_file_location(cls_name, val_path)
+            foo = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(foo)
+            validator_class = getattr(foo, cls_name)
             self.validator = validator_class(
                 validation=self.config.get('validation')
             )
@@ -114,7 +118,7 @@ class Argus:
             token_func = re.findall(r'^(.+)\((.+)\)$', auth['token'])
             if token_func:
                 if token_func[0][0] == 'env':
-                    self.token = os.environ(token_func[1])
+                    self.token = os.environ[token_func[1]]
                 elif token_func[0][0] == 'login':
                     self.token = self._login(auth, token_func[0][1])
             else:
@@ -204,7 +208,7 @@ class Argus:
                         lines = open(fpath, 'r').readlines()
                     params[field] = ','.join(lines)
                 if 'env' in params[field]:
-                    env_var = os.environ(params[field]['env'])
+                    env_var = os.environ[params[field]['env']]
                     params[field] = env_var
         return params
 

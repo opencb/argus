@@ -1,5 +1,5 @@
 # Custom validator
-validator: opencga_validator
+validator: /home/dapregi/dev/argus/opencga_validator.py
 
 # Authentication info
 authentication:
