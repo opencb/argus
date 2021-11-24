@@ -193,7 +193,8 @@ class Validator:
                             'result': result_headers})
 
         # Status code
-        task_status_code = task.validation.get('status_code', 200)
+        task_status_code = task.validation.get('status_code') \
+            if 'status_code' in task.validation else 200
         results.append(
             {'function': 'validate_status_code',
              'result': self.validate_status_code(task_status_code)}
