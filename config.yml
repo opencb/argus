@@ -1,38 +1,36 @@
-# Custom validator
-validator: /home/dapregi/dev/argus/opencga_validator.py
+# CUSTOM VALIDATOR
+#validator: /home/dapregi/dev/argus/opencga_validator.py
 
-# Authentication info
+# AUTHENTICATION INFO
 authentication:
-#  token: ssasasdsadsadasd.sdasd.asdasd
-#  token: env(OPENCGA_TOKEN)
+  ##  token: ssasasdsadsadasd.sdasd.asdasd
+  ##  token: env(OPENCGA_TOKEN)
   token: login(response[0].result[0].token)
   url: http://bioinfo.hpc.cam.ac.uk/opencga-demo/webservices/rest/v1/users/demo/login
   headers:
     Accept-Encoding: gzip
   method: POST
+  body: {"user": "demouser", "password": "demouser"}
+
+# DEFAULT REST PARAMETERS
+#rest:
+#  headers:
+#    Accept-Encoding: gzip
 #  queryParams:
-  body: {password: demo}
+#    limit: 10
+#    count: False
 
-# Default rest parameters
-rest:
-  headers:
-    Accept-Encoding: gzip
-  queryParams:
-    limit: 10
-    count: False
+# SELECTED SUITES FOR TESTING
+#suites:
+# - variant
 
-# Selected suites for testing
-suites:
- - projects
- - variant
+# TEST SELECTION
+#tests:
+#  ignore_async: false
+#  ignore_method: ["POST"]
+#  ignore_tag: ["SLOW"]
 
-# Test selection
-tests:
-  ignore_async: false
-  ignore_method: ["POST"]
-  ignore_tag: ["SLOW"]
-
-# Validation parameters
+# VALIDATION PARAMETERS
 validation:
 
   timeDeviation: 100  # % of time allowed to deviate from expected time (0-100)

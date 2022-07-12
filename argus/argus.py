@@ -101,7 +101,7 @@ class Argus:
             )
 
     def _generate_headers(self):
-        if self.config['rest'] and self.config['rest']['headers']:
+        if 'rest' in self.config and self.config['rest'] and self.config['rest']['headers']:
             self.headers = self.config['rest']['headers']
 
     @staticmethod
@@ -253,6 +253,7 @@ class Argus:
         query_params = task.get('queryParams')
         matrix_params = task.get('matrixParams')
         body = task.get('body')
+        body_matrix_params = task.get('bodyMatrixParams')
         validation = task.get('validation')
 
         # Parsing pathParams and queryParams
@@ -264,8 +265,7 @@ class Argus:
         # Parsing matrix params
         if matrix_params is not None:
             matrix_params_list = self._parse_matrix_params(matrix_params)
-            query_params_list = self._merge_params(id_, query_params,
-                                                   matrix_params_list)
+            query_params_list = self._merge_params(id_, query_params, matrix_params_list)
         else:
             query_params_list = [query_params]
 
@@ -277,15 +277,25 @@ class Argus:
                     if key not in query_params:
                         query_params[key] = default_params[key]
 
+        # Parsing body matrix params
+        if body_matrix_params is not None:
+            matrix_body_params_list = self._parse_matrix_params(body_matrix_params)
+            body_params_list = self._merge_params(id_, body, matrix_body_params_list)
+        else:
+            body_params_list = [body]
+
+        # Cartesian product between query and body params
+        task_params = [i for i in product(query_params_list, body_params_list)]
+
         # Generating ID list
         id_list = [
-            '{}-{}'.format(id_, i) for i in range(len(query_params_list))
-        ] if len(query_params_list) > 1 else [id_]
+            '{}-{}'.format(id_, i+1) for i in range(len(task_params))
+        ] if len(task_params) > 1 else [id_]
 
         # Creating tasks
         tasks = [
             _Task(id_=id_, path_params=path_params,
-                  query_params=query_params_list[i], body=body,
+                  query_params=task_params[i][0], body=task_params[i][1],
                   validation=validation)
             for i, id_ in enumerate(id_list)
         ]

@@ -1,0 +1,24 @@
+id: gene
+baseUrl: http://bioinfo.hpc.cam.ac.uk/cellbase-5.0.0/webservices/rest/v5/hsapiens/feature/gene
+tests:
+  - id: info
+    path: /{genes}/info
+    method: GET
+    async: false
+    tasks:
+      - id: positive
+        pathParams:
+          genes: BRCA2
+        matrixParams:
+          source:
+            - ensembl
+            - refseq
+          include:
+            - chromosome,biotype
+            - id,biotype
+        validation:
+          # seconds
+          time: 0.05
+          results:
+            - match('responses[0].results[0].biotype', 'protein_coding')
+

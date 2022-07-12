@@ -7,10 +7,22 @@ tests:
   method: GET
   async: false
   tasks:
+  - id: test_task
+    queryParams:
+      study: exomes_grch37:corpasome
+    matrixParams:
+      count: [true, false]
+    body:
+      a: A
+    bodyMatrixParams:
+      method: [X, Y]
+      case: [1, 2]
+    validation:
+      results:
+        - list_length('response[0].result', 1, 'eq')
   - id: count
     queryParams:
-      project: exomes_grch37
-      study: corpasome
+      study: exomes_grch37:corpasome
       count: true
     validation:
       # seconds
@@ -22,8 +34,7 @@ tests:
         - compare('response[0].result[0]', 300711, 'eq')
   - id: SNV
     queryParams:
-      project: exomes_grch37
-      study: corpasome
+      study: exomes_grch37:corpasome
       type: SNV
     validation:
       # seconds
@@ -34,8 +45,7 @@ tests:
         - list_apply('response[0].result', 'v -> v.type == "SNV"')
   - id: type
     queryParams:
-      project: exomes_grch37
-      study: corpasome
+      study: exomes_grch37:corpasome
     matrixParams:
       type: ["SNV","INDEL","SNP"]
     validation:
