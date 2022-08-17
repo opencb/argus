@@ -21,13 +21,13 @@ class OpencgaValidator(Validator):
     @staticmethod
     def check_job_status(job_response):
         job_res_json = job_response.json()
-        job_res_json = job_res_json['response'][0]['result'][0]
-        if job_res_json['status']['name'] in ['PENDING', 'RUNNING']:
+        job_res_json = job_res_json['response'][0]['results'][0]
+        if job_res_json['internal']['status']['id'] in ['PENDING', 'RUNNING']:
             return False
         return True
 
     def validate_async(self, async_jobs):
-        validation_results = [None]*len(async_jobs)
+        validation_results = list([None]*len(async_jobs))
         finished_jobs = []
         while True:
             for i, async_job in enumerate(async_jobs):
@@ -35,8 +35,8 @@ class OpencgaValidator(Validator):
                     continue
                 res_json = async_job['response'].json()
                 job_response = self.get_job_info(
-                    study_id=res_json['response'][0]['result'][0]['study']['id'],
-                    job_id=res_json['response'][0]['result'][0]['id'],
+                    study_id=res_json['response'][0]['results'][0]['study']['id'],
+                    job_id=res_json['response'][0]['results'][0]['id'],
                     base_url=async_job['current'].base_url,
                     headers=async_job['headers']
                 )

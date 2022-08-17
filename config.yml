@@ -5,12 +5,12 @@
 authentication:
   ##  token: ssasasdsadsadasd.sdasd.asdasd
   ##  token: env(OPENCGA_TOKEN)
-  token: login(response[0].result[0].token)
-  url: http://bioinfo.hpc.cam.ac.uk/opencga-demo/webservices/rest/v1/users/demo/login
+  token: login(responses[0].results[0].token)
+  url: https://test.app.zettagenomics.com/reference/opencga/webservices/rest/v5.1/users/login
   headers:
     Accept-Encoding: gzip
   method: POST
-  body: {"user": "demouser", "password": "demouser"}
+  body: {"user": "USER", "password": "PASS"}
 
 # DEFAULT REST PARAMETERS
 #rest:
@@ -21,8 +21,8 @@ authentication:
 #    count: False
 
 # SELECTED SUITES FOR TESTING
-#suites:
-# - variant
+suites:
+ - variant
 
 # TEST SELECTION
 #tests:

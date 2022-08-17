@@ -9,7 +9,8 @@ from datetime import datetime
 
 from argus.validator import Validator
 from argus.validation_result import ValidationResult
-from argus.utils import get_item, create_url, query
+from argus.utils import get_item, create_url
+from argus.commons import query
 
 
 class _Suite:
@@ -108,8 +109,7 @@ class Argus:
     def _login(auth, field):
         url = create_url(auth['url'], auth.get('pathParams'),
                          auth.get('queryParams'))
-        response = query(url, auth.get('method'), auth.get('headers'),
-                         auth.get('body'))
+        response = query(url, method=auth.get('method'), headers=auth.get('headers'), body=auth.get('body'))
         return get_item(response.json(), field)
 
     def _generate_token(self):
@@ -307,8 +307,8 @@ class Argus:
                                               self.current.tests[0].path])
         self.url = create_url(url, self.current.tests[0].tasks[0].path_params,
                               self.current.tests[0].tasks[0].query_params)
-        response = query(self.url, self.current.tests[0].method, self.headers,
-                         self.current.tests[0].tasks[0].body)
+        response = query(self.url, method=self.current.tests[0].method, headers=self.headers,
+                         body=self.current.tests[0].tasks[0].body)
         self.response = response
 
     def execute(self):
