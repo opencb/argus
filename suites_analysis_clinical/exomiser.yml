@@ -1,0 +1,17 @@
+id: suites_analysis_clinical
+baseUrl: https://test.app.zettagenomics.com/xeta-14s/opencga/webservices/rest/v2/analysis/clinical
+tests:
+  - id: suites_analysis_clinical
+    path: /interpreter/suites_analysis_clinical/run
+    method: POST
+    async: true
+    tasks:
+      - id: task1
+        queryParams:
+          study: test@germline:ashkenazim
+        body:
+          - clinicalAnalysis: CHG002O
+        validation:
+          # seconds
+          time: 0.05
+

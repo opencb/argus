@@ -308,7 +308,7 @@ class Argus:
         self.url = create_url(url, self.current.tests[0].tasks[0].path_params,
                               self.current.tests[0].tasks[0].query_params)
         response = query(self.url, method=self.current.tests[0].method, headers=self.headers,
-                         body=self.current.tests[0].tasks[0].body)
+                         body=self.current.tests[0].tasks[0].body[0])
         self.response = response
 
     def execute(self):

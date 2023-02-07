@@ -21,8 +21,8 @@ class OpencgaValidator(Validator):
     @staticmethod
     def check_job_status(job_response):
         job_res_json = job_response.json()
-        job_res_json = job_res_json['response'][0]['results'][0]
-        if job_res_json['internal']['status']['id'] in ['PENDING', 'RUNNING']:
+        job_res_json = job_res_json['responses'][0]['results'][0]
+        if job_res_json['internal']['status']['id'] in ['PENDING', 'RUNNING', 'QUEUED']:
             return False
         return True
 
@@ -35,8 +35,8 @@ class OpencgaValidator(Validator):
                     continue
                 res_json = async_job['response'].json()
                 job_response = self.get_job_info(
-                    study_id=res_json['response'][0]['results'][0]['study']['id'],
-                    job_id=res_json['response'][0]['results'][0]['id'],
+                    study_id=res_json['responses'][0]['results'][0]['study']['id'],
+                    job_id=res_json['responses'][0]['results'][0]['id'],
                     base_url=async_job['current'].base_url,
                     headers=async_job['headers']
                 )
@@ -55,5 +55,5 @@ class OpencgaValidator(Validator):
                     finished_jobs.append(i)
             if None not in validation_results:
                 break
-            time.sleep(self.validation['validation']['asyncRetryTime'])
+            time.sleep(self.validation['asyncRetryTime'])
         return validation_results
