@@ -10,7 +10,7 @@ tests:
   - id: test_task
     queryParams:
       study: germline:ashkenazim
-      lmiit: 10
+      limit: 10
     matrixParams:
       count: [true, false]
     validation:

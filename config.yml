@@ -2,15 +2,15 @@
 #validator: /home/dapregi/dev/argus/opencga_validator.py
 
 # AUTHENTICATION INFO
-authentication:
-  ##  token: ssasasdsadsadasd.sdasd.asdasd
-  ##  token: env(OPENCGA_TOKEN)
-  token: login(responses[0].results[0].token)
-  url: https://test.app.zettagenomics.com/reference/opencga/webservices/rest/v5.1/users/login
-  headers:
-    Accept-Encoding: gzip
-  method: POST
-  body: {"user": "USER", "password": "PASS"}
+#authentication:
+#  ##  token: ssasasdsadsadasd.sdasd.asdasd
+#  ##  token: env(OPENCGA_TOKEN)
+#  token: login(responses[0].results[0].token)
+#  url: https://test.app.zettagenomics.com/reference/opencga/webservices/rest/v5.1/users/login
+#  headers:
+#    Accept-Encoding: gzip
+#  method: POST
+#  body: {"user": "USER", "password": "PASS"}
 
 # DEFAULT REST PARAMETERS
 #rest:
@@ -22,7 +22,7 @@ authentication:
 
 # SELECTED SUITES FOR TESTING
 suites:
- - variant
+ - gene
 
 # TEST SELECTION
 #tests:
