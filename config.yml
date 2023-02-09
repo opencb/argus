@@ -22,7 +22,8 @@ authentication:
 
 # SELECTED SUITES FOR TESTING
 suites:
- - analysis-clinical
+  - gene
+  - analysis_clinical
 
 # TEST SELECTION
 #tests:

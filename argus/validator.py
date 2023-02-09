@@ -52,6 +52,10 @@ class Validator:
     def task(self, task):
         self._task = task
 
+    def get_item(self, field):
+        field_value = get_item(self._rest_response_json, field)
+        return field_value
+
     def compare(self, field, value, operator='eq'):
         field_value = get_item(self._rest_response_json, field)
         return num_compare(field_value, value, operator)
@@ -139,8 +143,9 @@ class Validator:
                 msg = 'Validation method "{}" not defined'
                 raise AttributeError(msg.format(name))
 
-            # Raise error if fail_on_first is True
             result = eval('self.{}({})'.format(name, args))
+
+            # Raise error if fail_on_first is True
             if self.validation['fail_on_first'] and not result:
                 msg = 'Validation function "{}" returned False'
                 raise ValidationError(msg.format(method))

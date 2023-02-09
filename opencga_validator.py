@@ -57,3 +57,11 @@ class OpencgaValidator(Validator):
                 break
             time.sleep(self.validation['asyncRetryTime'])
         return validation_results
+
+    def file_exists(self, outputs, fname):
+        outputs_value = self.get_item(outputs)
+        for output in outputs_value:
+            if 'name' in output:
+                if fname == output['name']:
+                    return True
+        return False
