@@ -1,7 +1,7 @@
 import re
 
-from argus.utils import get_item, dot2python, num_compare
-from argus.argus_exceptions import ValidationError
+from dargus.utils import get_item, dot2python, num_compare
+from dargus.argus_exceptions import ValidationError
 
 
 class Validator:

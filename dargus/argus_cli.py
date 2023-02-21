@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
+import sys
 import argparse
+
+from dargus.argus import Argus
 
 
 class ArgusCLI:
@@ -36,3 +39,16 @@ class ArgusCLI:
     def _stats(self):
         parser = self.subparsers.add_parser('stats')
         parser.add_argument('input', help='json file')
+
+
+def main():
+
+    cli = ArgusCLI()
+    args = cli.parser.parse_args()
+
+    client_generator = Argus(args.suite_dir, args.config, args.output)
+    client_generator.execute()
+
+
+if __name__ == '__main__':
+    sys.exit(main())

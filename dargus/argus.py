@@ -1,5 +1,4 @@
 import os
-import sys
 import yaml
 import gzip
 import re
@@ -7,10 +6,10 @@ import json
 from itertools import product
 from datetime import datetime
 
-from argus.validator import Validator
-from argus.validation_result import ValidationResult
-from argus.utils import get_item, create_url
-from argus.commons import query
+from dargus.validator import Validator
+from dargus.validation_result import ValidationResult
+from dargus.utils import get_item, create_url
+from dargus.commons import query
 
 
 class _Suite:

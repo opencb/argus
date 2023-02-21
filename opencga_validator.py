@@ -2,8 +2,8 @@ import re
 import requests
 import time
 
-from argus.validator import Validator
-from argus.validation_result import ValidationResult
+from dargus import Validator
+from dargus import ValidationResult
 
 
 class OpencgaValidator(Validator):
