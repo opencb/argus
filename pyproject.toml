@@ -7,7 +7,7 @@ packages = ["dargus"]
 
 [project]
 name = "dargus"
-version = "1.0.0"
+version = "1.0.1"
 description = "A Python engine for testing and benchmarking REST web services"
 readme = {file = "README.md", content-type = "text/markdown"}
 requires-python = ">=3.6"
