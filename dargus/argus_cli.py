@@ -4,6 +4,7 @@ import sys
 import argparse
 
 from dargus.argus import Argus
+from dargus.argus_config import ArgusConfiguration
 
 
 class ArgusCLI:
@@ -33,8 +34,14 @@ class ArgusCLI:
                             help='test folder containing suite YML files')
         parser.add_argument('-o', '--output',
                             help='output file path')
-        # parser.add_argument('--suites',
-        #                     help='suites to run; overrule config file')
+        parser.add_argument('-v', '--validator',
+                            help='validator file path')
+        # parser.add_argument('-u', '--username',
+        #                     help='validator file path')
+        # parser.add_argument('-p', '--password',
+        #                     help='validator file path')
+        parser.add_argument('-s', '--suites',
+                            help='suites to run')
 
     def _stats(self):
         parser = self.subparsers.add_parser('stats')
@@ -46,7 +53,15 @@ def main():
     cli = ArgusCLI()
     args = cli.parser.parse_args()
 
-    client_generator = Argus(args.suite_dir, args.config, args.output)
+    argus_config = ArgusConfiguration(
+        args.config,
+        validator=args.validator,
+        # username=args.username,
+        # password=args.password
+        suites=args.suites
+    ).get_config()
+
+    client_generator = Argus(args.suite_dir, argus_config, args.output)
     client_generator.execute()
 
 

@@ -15,5 +15,6 @@ tests:
           # seconds
           time: 0.05
           results:
-            - file_exists('responses[0].results[0].output', 'interpretation.json')
+            - file_exists('responses[0].results[0].output', ['interpretation.json'])
+            - file_size('responses[0].results[0].output', 'interpretation.json', 0, 'gt')
 

@@ -2,8 +2,9 @@ import re
 import requests
 import time
 
-from dargus import Validator
-from dargus import ValidationResult
+from dargus.validator import Validator
+from dargus.validation_result import ValidationResult
+from dargus.utils import num_compare
 
 
 class OpencgaValidator(Validator):
@@ -58,10 +59,23 @@ class OpencgaValidator(Validator):
             time.sleep(self.validation['asyncRetryTime'])
         return validation_results
 
-    def file_exists(self, outputs, fname):
-        outputs_value = self.get_item(outputs)
-        for output in outputs_value:
-            if 'name' in output:
-                if fname == output['name']:
-                    return True
+    def file_exists(self, files, fname_list):
+        files_value = self.get_item(files)
+        if isinstance(fname_list, str):
+            fname_list = fname_list.split(',')
+        out_fnames = [file['name'] for file in files_value if 'name' in file]
+        intersection = [fname for fname in fname_list if fname in out_fnames]
+        if len(intersection) == len(fname_list):
+            return True
         return False
+
+    def file_size(self, files, fname, size, operator='eq'):
+        files_value = self.get_item(files)
+        for file in files_value:
+            if 'name' in file:
+                if file['name'] == fname:
+                    return num_compare(file['size'], size, operator)
+        return False
+
+    def file_contains(self, files, fname, pattern):
+        pass
