@@ -51,7 +51,7 @@ class _Task:
 
 class Argus:
     def __init__(self, test_folder, argus_config, out_fpath=None):
-        self.test_folder = test_folder
+        self.test_folder = os.path.realpath(os.path.expanduser(test_folder))
 
         self.config = argus_config
 
@@ -59,6 +59,7 @@ class Argus:
             t = datetime.now().strftime('%Y%m%d%H%M%S')
             self.out_fpath = os.path.join(test_folder, 'argus_out_' + t + '.json')
         else:
+            out_fpath = os.path.realpath(os.path.expanduser(out_fpath))
             os.makedirs(os.path.dirname(out_fpath), exist_ok=True)
             self.out_fpath = out_fpath
 

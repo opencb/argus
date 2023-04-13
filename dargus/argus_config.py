@@ -1,3 +1,4 @@
+import os
 import json
 import requests
 import yaml
@@ -28,7 +29,7 @@ class ArgusConfiguration(object):
                 self._config[key] = config_dict[key]
 
         if validator is not None:
-            self._config['validator'] = validator
+            self._config['validator'] = os.path.realpath(os.path.expanduser(validator))
 
         if suites is not None:
             self._config['suites'] = suites.split(',')
@@ -37,6 +38,7 @@ class ArgusConfiguration(object):
     @staticmethod
     def _get_dictionary_from_file(config_fpath):
         try:
+            config_fpath = os.path.realpath(os.path.expanduser(config_fpath))
             config_fhand = open(config_fpath, 'r')
         except IOError:
             msg = 'Unable to read file "' + config_fpath + '"'
