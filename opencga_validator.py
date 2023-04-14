@@ -2,8 +2,9 @@ import re
 import requests
 import time
 
-from argus.validator import Validator
-from argus.validation_result import ValidationResult
+from dargus.validator import Validator
+from dargus.validation_result import ValidationResult
+from dargus.utils import num_compare
 
 
 class OpencgaValidator(Validator):
@@ -21,13 +22,13 @@ class OpencgaValidator(Validator):
     @staticmethod
     def check_job_status(job_response):
         job_res_json = job_response.json()
-        job_res_json = job_res_json['response'][0]['result'][0]
-        if job_res_json['status']['name'] in ['PENDING', 'RUNNING']:
+        job_res_json = job_res_json['responses'][0]['results'][0]
+        if job_res_json['internal']['status']['id'] in ['PENDING', 'RUNNING', 'QUEUED']:
             return False
         return True
 
     def validate_async(self, async_jobs):
-        validation_results = [None]*len(async_jobs)
+        validation_results = list([None]*len(async_jobs))
         finished_jobs = []
         while True:
             for i, async_job in enumerate(async_jobs):
@@ -35,8 +36,8 @@ class OpencgaValidator(Validator):
                     continue
                 res_json = async_job['response'].json()
                 job_response = self.get_job_info(
-                    study_id=res_json['response'][0]['result'][0]['study']['id'],
-                    job_id=res_json['response'][0]['result'][0]['id'],
+                    study_id=res_json['responses'][0]['results'][0]['study']['id'],
+                    job_id=res_json['responses'][0]['results'][0]['id'],
                     base_url=async_job['current'].base_url,
                     headers=async_job['headers']
                 )
@@ -55,5 +56,26 @@ class OpencgaValidator(Validator):
                     finished_jobs.append(i)
             if None not in validation_results:
                 break
-            time.sleep(self.validation['validation']['asyncRetryTime'])
+            time.sleep(self.validation['asyncRetryTime'])
         return validation_results
+
+    def file_exists(self, files, fname_list):
+        files_value = self.get_item(files)
+        if isinstance(fname_list, str):
+            fname_list = fname_list.split(',')
+        out_fnames = [file['name'] for file in files_value if 'name' in file]
+        intersection = [fname for fname in fname_list if fname in out_fnames]
+        if len(intersection) == len(fname_list):
+            return True
+        return False
+
+    def file_size(self, files, fname, size, operator='eq'):
+        files_value = self.get_item(files)
+        for file in files_value:
+            if 'name' in file:
+                if file['name'] == fname:
+                    return num_compare(file['size'], size, operator)
+        return False
+
+    def file_contains(self, files, fname, pattern):
+        pass

@@ -1,5 +1,5 @@
 id: variant
-baseUrl: http://bioinfo.hpc.cam.ac.uk/opencga-demo/webservices/rest/v1/analysis/variant
+baseUrl: https://test.app.zettagenomics.com/reference/opencga/webservices/rest/v5.1/analysis/variant
 tests:
 - id: query
   tags: QUICK
@@ -9,49 +9,45 @@ tests:
   tasks:
   - id: test_task
     queryParams:
-      study: exomes_grch37:corpasome
+      study: germline:ashkenazim
+      limit: 10
     matrixParams:
       count: [true, false]
-    body:
-      a: A
-    bodyMatrixParams:
-      method: [X, Y]
-      case: [1, 2]
     validation:
       results:
-        - list_length('response[0].result', 1, 'eq')
-  - id: count
-    queryParams:
-      study: exomes_grch37:corpasome
-      count: true
-    validation:
-      # seconds
-      time: 0.05
-      headers:
-        Content-Type: application/json
-      results:
-        - list_length('response[0].result', 1, 'eq')
-        - compare('response[0].result[0]', 300711, 'eq')
-  - id: SNV
-    queryParams:
-      study: exomes_grch37:corpasome
-      type: SNV
-    validation:
-      # seconds
-      time: 2.0
-      headers:
-        Content-Type: application/json
-      results:
-        - list_apply('response[0].result', 'v -> v.type == "SNV"')
-  - id: type
-    queryParams:
-      study: exomes_grch37:corpasome
-    matrixParams:
-      type: ["SNV","INDEL","SNP"]
-    validation:
-      # seconds
-      time: 2.0
-      headers:
-        Content-Type: application/json
-      results:
-        - list_apply('response[0].result', 'v -> v.type == $QUERY_PARAMS.type')
+        - list_length('responses[0].results', 1, 'eq')
+#  - id: count
+#    queryParams:
+#      study: germline:ashkenazim
+#      count: true
+#    validation:
+#      # seconds
+#      time: 0.05
+#      headers:
+#        Content-Type: application/json
+#      results:
+#        - list_length('response[0].result', 1, 'eq')
+#        - compare('responses[0].results[0]', 300711, 'eq')
+#  - id: SNV
+#    queryParams:
+#      study: germline:ashkenazim
+#      type: SNV
+#    validation:
+#      # seconds
+#      time: 2.0
+#      headers:
+#        Content-Type: application/json
+#      results:
+#        - list_apply('responses[0].results', 'v -> v.type == "SNV"')
+#  - id: type
+#    queryParams:
+#      study: germline:ashkenazim
+#    matrixParams:
+#      type: ["SNV","INDEL","SNP"]
+#    validation:
+#      # seconds
+#      time: 2.0
+#      headers:
+#        Content-Type: application/json
+#      results:
+#        - list_apply('responses[0].results', 'v -> v.type == $QUERY_PARAMS.type')

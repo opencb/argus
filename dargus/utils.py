@@ -40,19 +40,6 @@ def create_url(url, path_params, query_params):
     return url
 
 
-def query(url, method='GET', headers=None, body=None):
-    # TODO
-    # print('URL={}; HEADERS={}; BODY={};\n'.format(url, headers, body))
-    if method.lower() == 'get':
-        response = requests.get(url, headers=headers)
-    elif method.lower() == 'post':
-        response = requests.post(url, json=body, headers=headers)
-    else:
-        msg = 'Method "' + method + '" not implemented.'
-        raise NotImplementedError(msg)
-    return response
-
-
 def num_compare(a, b, operator):
     a, b = float(a), float(b)
     if operator in ['=', '==', 'eq']:

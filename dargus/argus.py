@@ -1,5 +1,4 @@
 import os
-import sys
 import yaml
 import gzip
 import re
@@ -7,9 +6,10 @@ import json
 from itertools import product
 from datetime import datetime
 
-from argus.validator import Validator
-from argus.validation_result import ValidationResult
-from argus.utils import get_item, create_url, query
+from dargus.validator import Validator
+from dargus.validation_result import ValidationResult
+from dargus.utils import get_item, create_url
+from dargus.commons import query
 
 
 class _Suite:
@@ -50,16 +50,17 @@ class _Task:
 
 
 class Argus:
-    def __init__(self, test_folder, config_fpath, out_fpath=None):
-        self.test_folder = test_folder
-        self.config_fpath = config_fpath
-        with open(config_fpath, 'r') as fhand:
-            self.config = yaml.safe_load(fhand)
+    def __init__(self, test_folder, argus_config, out_fpath=None):
+        self.test_folder = os.path.realpath(os.path.expanduser(test_folder))
+
+        self.config = argus_config
 
         if out_fpath is None:
             t = datetime.now().strftime('%Y%m%d%H%M%S')
             self.out_fpath = os.path.join(test_folder, 'argus_out_' + t + '.json')
         else:
+            out_fpath = os.path.realpath(os.path.expanduser(out_fpath))
+            os.makedirs(os.path.dirname(out_fpath), exist_ok=True)
             self.out_fpath = out_fpath
 
         self.suites = []
@@ -82,7 +83,7 @@ class Argus:
         self._generate_headers()
         self._generate_token()
 
-        if 'validator' in self.config:
+        if 'validator' in self.config and self.config['validator'] is not None:
             import importlib.util
             val_path = self.config['validator']
             val_fname = os.path.basename(val_path)
@@ -101,19 +102,18 @@ class Argus:
             )
 
     def _generate_headers(self):
-        if 'rest' in self.config and self.config['rest'] and self.config['rest']['headers']:
+        if 'rest' in self.config and self.config['rest'] is not None and self.config['rest']['headers']:
             self.headers = self.config['rest']['headers']
 
     @staticmethod
     def _login(auth, field):
         url = create_url(auth['url'], auth.get('pathParams'),
                          auth.get('queryParams'))
-        response = query(url, auth.get('method'), auth.get('headers'),
-                         auth.get('body'))
+        response = query(url, method=auth.get('method'), headers=auth.get('headers'), body=auth.get('body'))
         return get_item(response.json(), field)
 
     def _generate_token(self):
-        if 'authentication' in self.config:
+        if 'authentication' in self.config and self.config['authentication'] is not None:
             auth = self.config['authentication']
             token_func = re.findall(r'^(.+)\((.+)\)$', auth['token'])
             if token_func:
@@ -147,7 +147,7 @@ class Argus:
         self.suite_ids.append(id_)
 
         # Filtering suites to run
-        if 'suites' in self.config:
+        if 'suites' in self.config and self.config['suites'] is not None:
             if id_ not in self.config['suites']:
                 return None
 
@@ -176,7 +176,7 @@ class Argus:
         async_ = test.get('async')
 
         # Filtering tests to run
-        if 'validation' in self.config:
+        if 'validation' in self.config and self.config['validation'] is not None:
             validation = self.config['validation']
             if 'ignore_async' in validation:
                 if async_ in validation['ignore_async']:
@@ -270,7 +270,7 @@ class Argus:
             query_params_list = [query_params]
 
         # Adding default queryParams
-        if 'rest' in self.config and self.config['rest']['queryParams']:
+        if 'rest' in self.config and self.config['rest'] is not None and self.config['rest']['queryParams']:
             default_params = self.config['rest']['queryParams']
             for query_params in query_params_list:
                 for key in default_params:
@@ -307,8 +307,8 @@ class Argus:
                                               self.current.tests[0].path])
         self.url = create_url(url, self.current.tests[0].tasks[0].path_params,
                               self.current.tests[0].tasks[0].query_params)
-        response = query(self.url, self.current.tests[0].method, self.headers,
-                         self.current.tests[0].tasks[0].body)
+        response = query(self.url, method=self.current.tests[0].method, headers=self.headers,
+                         body=self.current.tests[0].tasks[0].body)
         self.response = response
 
     def execute(self):

@@ -1,7 +1,7 @@
 import re
 
-from argus.utils import get_item, dot2python, num_compare
-from argus.argus_exceptions import ValidationError
+from dargus.utils import get_item, dot2python, num_compare
+from dargus.argus_exceptions import ValidationError
 
 
 class Validator:
@@ -51,6 +51,10 @@ class Validator:
     @task.setter
     def task(self, task):
         self._task = task
+
+    def get_item(self, field):
+        field_value = get_item(self._rest_response_json, field)
+        return field_value
 
     def compare(self, field, value, operator='eq'):
         field_value = get_item(self._rest_response_json, field)
@@ -139,8 +143,9 @@ class Validator:
                 msg = 'Validation method "{}" not defined'
                 raise AttributeError(msg.format(name))
 
-            # Raise error if fail_on_first is True
             result = eval('self.{}({})'.format(name, args))
+
+            # Raise error if fail_on_first is True
             if self.validation['fail_on_first'] and not result:
                 msg = 'Validation function "{}" returned False'
                 raise ValidationError(msg.format(method))
