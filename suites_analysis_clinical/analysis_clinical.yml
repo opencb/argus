@@ -1,8 +1,7 @@
 id: analysis_clinical
-baseUrl: https://test.app.zettagenomics.com/xeta-14s/opencga/webservices/rest/v2/analysis/clinical
 tests:
   - id: exomiser
-    path: /interpreter/exomiser/run
+    path: /analysis/clinical/interpreter/exomiser/run
     method: POST
     async: true
     tasks:
@@ -17,4 +16,5 @@ tests:
           results:
             - file_exists('responses[0].results[0].output', ['interpretation.json'])
             - file_size('responses[0].results[0].output', 'interpretation.json', 0, 'gt')
+            - list_apply('responses[0].results[0].params.clinicalAnalysis', 'v -> v.type == "SNV"')
 

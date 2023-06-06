@@ -14,6 +14,7 @@ class Validator:
         self._rest_response_json = None
         self._task = None
         self._async_jobs = []
+        self.stored_values = {}
 
     @staticmethod
     def get_default_validation():
@@ -151,6 +152,10 @@ class Validator:
                 raise ValidationError(msg.format(method))
 
             results.append({'function': method, 'result': result})
+
+        # Empty stored values
+        self.stored_values = {}
+
         return results
 
     def validate_time(self, task_time):

@@ -151,6 +151,9 @@ class Argus:
             if id_ not in self.config['suites']:
                 return None
 
+        # Getting base URL
+        if suite.get('baseUrl') is None and 'baseUrl' in self.config:
+            suite['baseUrl'] = self.config['baseUrl']
         base_url = suite.get('baseUrl')
 
         tests = list(filter(
