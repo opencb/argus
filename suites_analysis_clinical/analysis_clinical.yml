@@ -16,5 +16,6 @@ tests:
           results:
             - file_exists('responses[0].results[0].output', ['interpretation.json'])
             - file_size('responses[0].results[0].output', 'interpretation.json', 0, 'gt')
-            - list_apply('responses[0].results[0].params.clinicalAnalysis', 'v -> v.type == "SNV"')
+            - opencga_query('/analysis/clinical/CA_test_14_vlhXh/info?study=test@germline:ashkenazim&includeResult=true', 'test')
+            - match('<test>.responses[0].results[0].id', 'CA_test_14_vlhXh')
 
