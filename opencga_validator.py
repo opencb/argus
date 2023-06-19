@@ -8,8 +8,8 @@ from dargus.utils import num_compare
 
 
 class OpencgaValidator(Validator):
-    def __init__(self, validation):
-        super().__init__(validation=validation)
+    def __init__(self, config, token):
+        super().__init__(config=config, token=token)
 
     @staticmethod
     def get_job_info(job_id, study_id, base_url, headers):
@@ -77,5 +77,17 @@ class OpencgaValidator(Validator):
                     return num_compare(file['size'], size, operator)
         return False
 
-    def file_contains(self, files, fname, pattern):
-        pass
+    def opencga_query(self, path, variable_name):
+        # Getting base URL from config or from the suite itself
+        base_url = None
+        if self._config.get('baseUrl') is not None:
+            base_url = self._config.get('baseUrl')
+        if self._current.base_url is not None:
+            base_url = self._current.base_url
+
+        # Querying the endpoint and storing the response internally
+        response = requests.get(base_url + path,
+                                headers={"Authorization": 'Bearer {}'.format(self._token)})
+        self._stored_values[variable_name] = response.json()
+
+        return True

@@ -8,7 +8,7 @@ from datetime import datetime
 
 from dargus.validator import Validator
 from dargus.validation_result import ValidationResult
-from dargus.utils import get_item, create_url
+from dargus.utils import get_item_from_json, create_url
 from dargus.commons import query
 
 
@@ -94,11 +94,11 @@ class Argus:
             spec.loader.exec_module(foo)
             validator_class = getattr(foo, cls_name)
             self.validator = validator_class(
-                validation=self.config.get('validation')
+                config=self.config, token=self.token
             )
         else:
             self.validator = Validator(
-                validation=self.config.get('validation')
+                config=self.config, token=self.token
             )
 
     def _generate_headers(self):
@@ -110,7 +110,7 @@ class Argus:
         url = create_url(auth['url'], auth.get('pathParams'),
                          auth.get('queryParams'))
         response = query(url, method=auth.get('method'), headers=auth.get('headers'), body=auth.get('body'))
-        return get_item(response.json(), field)
+        return get_item_from_json(response.json(), field)
 
     def _generate_token(self):
         if 'authentication' in self.config and self.config['authentication'] is not None:
@@ -151,6 +151,9 @@ class Argus:
             if id_ not in self.config['suites']:
                 return None
 
+        # Getting base URL
+        if suite.get('baseUrl') is None and 'baseUrl' in self.config:
+            suite['baseUrl'] = self.config['baseUrl']
         base_url = suite.get('baseUrl')
 
         tests = list(filter(
@@ -323,7 +326,7 @@ class Argus:
                     self.query_task()
                     if not self.current.tests[0].async_:
                         res = self.validator.validate(
-                            self.response, self.current.tests[0].tasks[0]
+                            self.response, self.current
                         )
                         vr = ValidationResult(
                             current=self.current,

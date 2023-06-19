@@ -1,6 +1,9 @@
 # CUSTOM VALIDATOR
 validator: /home/dapregi/dev/argus/opencga_validator.py
 
+# BASE URL
+baseUrl: https://test.app.zettagenomics.com/xeta-14s/opencga/webservices/rest/v2
+
 # AUTHENTICATION INFO
 #authentication:
 ##  ##  token: ssasasdsadsadasd.sdasd.asdasd

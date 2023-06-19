@@ -2,7 +2,7 @@ import re
 import requests
 
 
-def get_item(json_dict, field):
+def get_item_from_json(json_dict, field):
     for item in field.split('.'):
         items = list(filter(None, re.split(r'[\[\]]', item)))
         key, indexes = items[0], map(int, items[1:])

@@ -1,8 +1,7 @@
 id: analysis_clinical
-baseUrl: https://test.app.zettagenomics.com/xeta-14s/opencga/webservices/rest/v2/analysis/clinical
 tests:
   - id: exomiser
-    path: /interpreter/exomiser/run
+    path: /analysis/clinical/interpreter/exomiser/run
     method: POST
     async: true
     tasks:
@@ -17,4 +16,6 @@ tests:
           results:
             - file_exists('responses[0].results[0].output', ['interpretation.json'])
             - file_size('responses[0].results[0].output', 'interpretation.json', 0, 'gt')
+            - opencga_query('/analysis/clinical/CA_test_14_vlhXh/info?study=test@germline:ashkenazim&includeResult=true', 'test')
+            - match('<test>.responses[0].results[0].id', 'CA_test_14_vlhXh')
 
