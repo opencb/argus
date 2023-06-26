@@ -20,7 +20,10 @@ def dot2python(field):
             z.append(item)
         else:
             item_split = item.split('[')
-            key = '["{}"]'.format(item_split[0])
+            if item_split[0][-1] == ')':  # Support for type casting "int(v.firsts[0].second)"
+                key = '["{}"])'.format(item_split[0].rstrip(')'))
+            else:
+                key = '["{}"]'.format(item_split[0])
             z.append(key)
             if len(item_split) > 1:
                 z.append(item[len(item_split[0]):])
