@@ -43,7 +43,7 @@ class OpencgaValidator(Validator):
                 )
                 if self.check_job_status(job_response):
                     res = self.validate(
-                        job_response, async_job['current'].tests[0].tasks[0]
+                        job_response, async_job['current']
                     )
                     vr = ValidationResult(
                         current=async_job['current'],

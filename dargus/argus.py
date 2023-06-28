@@ -1,4 +1,6 @@
 import os
+import sys
+
 import yaml
 import gzip
 import re
@@ -132,7 +134,12 @@ class Argus:
                   file.endswith('.yml')]
         for fpath in fpaths:
             with open(fpath, 'r') as fhand:
-                suite = yaml.safe_load(fhand)
+                try:
+                    suite = yaml.safe_load(fhand)
+                except yaml.parser.ParserError as e:
+                    msg = '[WARNING] Skipping file "{}". Unable to parse YML file. {}.'
+                    sys.stderr.write(msg.format(fpath, ' '.join(str(e).replace('\n', ' ').split()).capitalize()))
+                    continue
             suite = self._parse_suite(suite)
             if suite is not None:
                 self.suites.append(suite)
