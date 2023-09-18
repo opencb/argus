@@ -11,7 +11,7 @@ tests:
           genes: BRCA2
         queryParams:
           assembly: grch38
-        matrixParams:
+        queryMatrixParams:
           source:
             - ensembl
             - refseq

@@ -10,7 +10,7 @@ tests:
     queryParams:
       study: germline:ashkenazim
       limit: 10
-    matrixParams:
+    queryMatrixParams:
       count: [true, false]
     validation:
       results:
@@ -41,7 +41,7 @@ tests:
 #  - id: type
 #    queryParams:
 #      study: germline:ashkenazim
-#    matrixParams:
+#    queryMatrixParams:
 #      type: ["SNV","INDEL","SNP"]
 #    validation:
 #      # seconds

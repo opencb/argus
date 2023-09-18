@@ -224,7 +224,7 @@ class Argus:
     @staticmethod
     def _parse_content(params):
         for field in params:
-            if isinstance(params[field], dict) and field != 'matrixParams':
+            if isinstance(params[field], dict) and field != 'queryMatrixParams':
                 if 'file' in params[field]:
                     fpath = params[field]['file']
                     if fpath.endswith('.gz'):
@@ -256,7 +256,7 @@ class Argus:
             duplicated = list(set(matrix_params.keys()) &
                               set(new_query_params.keys()))
             if duplicated:
-                msg = '[Step ID: "{}"] Some matrixParams are already' \
+                msg = '[Step ID: "{}"] Some queryMatrixParams are already' \
                       ' defined in queryParams ("{}")'
                 raise ValueError(
                     msg.format(step_id, '";"'.join(duplicated)))
@@ -276,7 +276,7 @@ class Argus:
 
         path_params = step.get('pathParams')
         query_params = step.get('queryParams')
-        matrix_params = step.get('matrixParams')
+        query_matrix_params = step.get('queryMatrixParams')
         body_params = step.get('bodyParams')
         body_matrix_params = step.get('bodyMatrixParams')
         validation = step.get('validation')
@@ -288,9 +288,9 @@ class Argus:
             query_params = self._parse_content(query_params)
 
         # Parsing matrix params
-        if matrix_params is not None:
-            matrix_params_list = self._parse_matrix_params(matrix_params)
-            query_params_list = self._merge_params(id_, query_params, matrix_params_list)
+        if query_matrix_params is not None:
+            query_matrix_params_list = self._parse_matrix_params(query_matrix_params)
+            query_params_list = self._merge_params(id_, query_params, query_matrix_params_list)
         else:
             query_params_list = [query_params]
 
