@@ -16,8 +16,6 @@ def create_url(url, path_params, query_params):
 
 
 def query(url, method='GET', headers=None, body=None):
-    # TODO
-    # print('URL={}; HEADERS={}; BODY={};\n'.format(url, headers, body))
     if method.lower() == 'get':
         response = requests.get(url, headers=headers)
     elif method.lower() == 'post':

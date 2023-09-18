@@ -1,8 +1,8 @@
 id: gene
-baseUrl: https://ws.zettagenomics.com/cellbase/webservices/rest/v5/hsapiens/feature/gene
+baseUrl: https://ws.zettagenomics.com/cellbase/webservices/rest/v5/hsapiens
 tests:
   - id: info
-    path: /{genes}/info
+    path: /feature/gene/{genes}/info
     method: GET
     async: false
     tasks:

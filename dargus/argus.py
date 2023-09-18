@@ -1,5 +1,6 @@
 import os
 import sys
+import logging
 
 import yaml
 import gzip
@@ -12,6 +13,9 @@ from dargus.validator import Validator
 from dargus.validation_result import ValidationResult
 from dargus.utils import get_item_from_json, create_url
 from dargus.commons import query
+
+
+LOGGER = logging.getLogger('argus_logger')
 
 
 class _Suite:
@@ -85,7 +89,9 @@ class Argus:
         self._generate_headers()
         self._generate_token()
 
+        # Loading validator
         if 'validator' in self.config and self.config['validator'] is not None:
+            LOGGER.debug('Loading custom validator from "{}"'.format(self.config['validator']))
             import importlib.util
             val_path = self.config['validator']
             val_fname = os.path.basename(val_path)
@@ -133,12 +139,13 @@ class Argus:
                   if os.path.isfile(os.path.join(test_folder, file)) and
                   file.endswith('.yml')]
         for fpath in fpaths:
+            LOGGER.debug('Parsing file "{}"'.format(fpath))
             with open(fpath, 'r') as fhand:
                 try:
                     suite = yaml.safe_load(fhand)
                 except yaml.parser.ParserError as e:
-                    msg = '[WARNING] Skipping file "{}". Unable to parse YML file. {}.'
-                    sys.stderr.write(msg.format(fpath, ' '.join(str(e).replace('\n', ' ').split()).capitalize()))
+                    msg = 'Skipping file "{}". Unable to parse YML file. {}.'
+                    LOGGER.error(msg.format(fpath, ' '.join(str(e).replace('\n', ' ').split()).capitalize()))
                     continue
             suite = self._parse_suite(suite)
             if suite is not None:
@@ -317,19 +324,20 @@ class Argus:
                                               self.current.tests[0].path])
         self.url = create_url(url, self.current.tests[0].tasks[0].path_params,
                               self.current.tests[0].tasks[0].query_params)
+        LOGGER.debug('{} {} {}'.format(self.current.tests[0].method, self.url, self.current.tests[0].tasks[0].body))
         response = query(self.url, method=self.current.tests[0].method, headers=self.headers,
                          body=self.current.tests[0].tasks[0].body)
         self.response = response
 
     def execute(self):
         validation_results = []
-        out_fhand = open(self.out_fpath, 'w')
         for suite in self.suites:
             self.current = suite
             for test in suite.tests:
                 self.current.tests = [test]
                 for task in test.tasks:
                     self.current.tests[0].tasks = [task]
+                    LOGGER.debug('Querying: Suite "{}"; Test "{}"; Task "{}"'.format(suite.id_, test.id_, task.id_))
                     self.query_task()
                     if not self.current.tests[0].async_:
                         res = self.validator.validate(
@@ -357,6 +365,7 @@ class Argus:
                 async_res = self.validator.validate_async(self.async_jobs)
                 validation_results += async_res
 
+        out_fhand = open(self.out_fpath, 'w')
         out_fhand.write('\n'.join([json.dumps(vr.to_json())
                                    for vr in validation_results]) + '\n')
         out_fhand.close()

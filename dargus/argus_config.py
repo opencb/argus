@@ -1,7 +1,11 @@
 import os
+import logging
 import json
 import requests
 import yaml
+
+
+LOGGER = logging.getLogger('argus_logger')
 
 
 class ArgusConfiguration(object):
@@ -16,6 +20,7 @@ class ArgusConfiguration(object):
         }
 
         self.load_config(config_input, validator, suites)
+        LOGGER.debug('Configuration: {}'.format(self._config))
 
         self._validate_configuration(self._config)
 
@@ -34,11 +39,11 @@ class ArgusConfiguration(object):
         if suites is not None:
             self._config['suites'] = suites.split(',')
 
-
     @staticmethod
     def _get_dictionary_from_file(config_fpath):
+        LOGGER.debug('Loading configuration from: "{}"'.format(config_fpath))
+        config_fpath = os.path.realpath(os.path.expanduser(config_fpath))
         try:
-            config_fpath = os.path.realpath(os.path.expanduser(config_fpath))
             config_fhand = open(config_fpath, 'r')
         except IOError:
             msg = 'Unable to read file "' + config_fpath + '"'
