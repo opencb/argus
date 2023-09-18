@@ -9,7 +9,7 @@ class ValidationResult:
         self.task_id = current.tests[0].tasks[0].id_
         self.url = url
         self.validation = validation
-        self.headers = headers
+        self.headers = self.get_headers(headers)
         self.tags = current.tests[0].tags
         self.method = current.tests[0].method
         self.async_ = current.tests[0].async_
@@ -23,17 +23,23 @@ class ValidationResult:
 
         self.validation_bool_to_str()
 
-    def validation_bool_to_str(self):
-        for v in self.validation:
-            v['result'] = 'PASS' if v['result'] else 'FALSE'
+    @staticmethod
+    def get_headers(headers):
+        if headers is not None and 'Authorization' in headers:
+            headers['Authorization'] = 'REDACTED'
+        return headers
 
     @staticmethod
     def get_status(validation):
         status = all([v['result'] for v in validation])
-        return 'PASS' if status is True else 'FALSE'
+        return 'PASS' if status is True else 'FAIL'
+
+    def validation_bool_to_str(self):
+        for v in self.validation:
+            v['result'] = 'PASS' if v['result'] else 'FAIL'
 
     def to_json(self):
         return self.__dict__
 
     def to_html(self):
-        return json_to_html(self.to_json)
+        return json_to_html(self.__dict__)

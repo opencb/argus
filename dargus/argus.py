@@ -56,18 +56,24 @@ class _Task:
 
 
 class Argus:
-    def __init__(self, test_folder, argus_config, out_fpath=None):
-        self.test_folder = os.path.realpath(os.path.expanduser(test_folder))
+    def __init__(self, suite_dir, argus_config, output_prefix=None, output_dir=None):
+        self.test_folder = os.path.realpath(os.path.expanduser(suite_dir))
 
         self.config = argus_config
 
-        if out_fpath is None:
-            t = datetime.now().strftime('%Y%m%d%H%M%S')
-            self.out_fpath = os.path.join(test_folder, 'argus_out_' + t + '.json')
+        # Setting up output directory
+        if output_dir is None:
+            self.out_fpath = suite_dir
         else:
-            out_fpath = os.path.realpath(os.path.expanduser(out_fpath))
-            os.makedirs(os.path.dirname(out_fpath), exist_ok=True)
+            out_fpath = os.path.realpath(os.path.expanduser(output_dir))
+            os.makedirs(out_fpath, exist_ok=True)
             self.out_fpath = out_fpath
+
+        # Setting up output file names
+        if output_prefix is None:
+            self.out_prefix = 'argus_out_' + datetime.now().strftime('%Y%m%d%H%M%S')
+        else:
+            self.out_prefix = output_prefix
 
         self.suites = []
 
@@ -365,7 +371,12 @@ class Argus:
                 async_res = self.validator.validate_async(self.async_jobs)
                 validation_results += async_res
 
-        out_fhand = open(self.out_fpath, 'w')
-        out_fhand.write('\n'.join([json.dumps(vr.to_json())
-                                   for vr in validation_results]) + '\n')
+        # Writing to JSON file
+        out_fhand = open(os.path.join(self.out_fpath, self.out_prefix + '.json'), 'w')
+        out_fhand.write('\n'.join([json.dumps(vr.to_json()) for vr in validation_results]) + '\n')
+        out_fhand.close()
+
+        # Writing to HTML file
+        out_fhand = open(os.path.join(self.out_fpath, self.out_prefix + '.html'), 'w')
+        out_fhand.write('\n'.join([vr.to_html() for vr in validation_results]) + '\n')
         out_fhand.close()

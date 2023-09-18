@@ -43,14 +43,12 @@ class ArgusCLI:
                                     help='configuration YML file path')
         execute_parser.add_argument('suite_dir',
                                     help='test folder containing suite YML files')
-        execute_parser.add_argument('-o', '--output',
-                                    help='output file path')
+        execute_parser.add_argument('-o', '--output_prefix',
+                                    help='output prefix for filenames')
+        execute_parser.add_argument('-d', '--output_dir',
+                                    help='output file directory')
         execute_parser.add_argument('-v', '--validator',
                                     help='validator file path')
-        # execute_parser.add_argument('-u', '--username',
-        #                     help='validator file path')
-        # execute_parser.add_argument('-p', '--password',
-        #                     help='validator file path')
         execute_parser.add_argument('-s', '--suites',
                                     help='suites to run')
 
@@ -92,12 +90,10 @@ def main():
     argus_config = ArgusConfiguration(
         args.config,
         validator=args.validator,
-        # username=args.username,
-        # password=args.password
         suites=args.suites
     ).get_config()
 
-    client_generator = Argus(args.suite_dir, argus_config, args.output)
+    client_generator = Argus(args.suite_dir, argus_config, args.output_prefix, args.output_dir)
     client_generator.execute()
 
 

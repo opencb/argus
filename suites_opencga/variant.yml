@@ -1,9 +1,8 @@
 id: variant
-baseUrl: https://test.app.zettagenomics.com/reference/opencga/webservices/rest/v5.1/analysis/variant
 tests:
 - id: query
   tags: QUICK
-  path: query
+  path: /analysis/variant/query
   method: GET
   async: false
   tasks:

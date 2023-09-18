@@ -8,7 +8,7 @@ LOGGER = logging.getLogger('argus_logger')
 
 
 class ArgusConfiguration(object):
-    def __init__(self, config_input, validator=None, username=None, password=None, suites=None):
+    def __init__(self, config_input, validator=None, suites=None):
         # Default config params
         self._config = {
             'authentication': None,

@@ -61,33 +61,26 @@ def num_compare(a, b, operator):
         return a <= b
 
 
+def convert_bool_and_null(item):
+    """Function to recursively convert 'false' to False, 'true' to True, and 'null' to None"""
+    if isinstance(item, list):
+        return [convert_bool_and_null(i) for i in item]
+    elif isinstance(item, dict):
+        return {k: convert_bool_and_null(v) for k, v in item.items()}
+    elif isinstance(item, str):
+        if item.lower() == 'false':
+            return 'False'
+        elif item.lower() == 'true':
+            return 'True'
+        elif item.lower() == 'null':
+            return 'None'
+    return item
+
+
 def json_to_html(json_string):
-    # Load the JSON string into a Python dictionary
-    data = json.loads(json_string)
+    # Convert bool and null values
+    updated_json_string = json.dumps(convert_bool_and_null(json_string), indent=2)
 
-    # Function to recursively convert 'false' to False, 'true' to True, and 'null' to None
-    def convert_bool_and_null(item):
-        if isinstance(item, list):
-            return [convert_bool_and_null(i) for i in item]
-        elif isinstance(item, dict):
-            return {k: convert_bool_and_null(v) for k, v in item.items()}
-        elif isinstance(item, str):
-            if item.lower() == 'false':
-                return False
-            elif item.lower() == 'true':
-                return True
-            elif item.lower() == 'null':
-                return None
-        return item
-
-    # Apply the function to the data
-    updated_data = convert_bool_and_null(data)
-
-    # Convert the updated data back to JSON
-    updated_json_string = json.dumps(updated_data, indent=2)
-
-    # Print the updated JSON string
-    scan_output = json2html.convert(json=updated_json_string)
-    html_fpath = "./reports/output.html"
-    with open(html_fpath, 'w') as html_fhand:
-        html_fhand.write(str(scan_output))
+    # Convert JSON to HTML
+    out_html = json2html.json2html.convert(json=updated_json_string)
+    return out_html
