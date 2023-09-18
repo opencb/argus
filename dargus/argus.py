@@ -43,12 +43,12 @@ class _Test:
 
 
 class _Step:
-    def __init__(self, id_, path_params=None, query_params=None, body=None,
+    def __init__(self, id_, path_params=None, query_params=None, body_params=None,
                  validation=None):
         self.id_ = id_
         self.path_params = path_params
         self.query_params = query_params
-        self.body = body
+        self.body_params = body_params
         self.validation = validation
 
     def __str__(self):
@@ -123,8 +123,10 @@ class Argus:
     def _login(auth, field):
         url = create_url(auth['url'], auth.get('pathParams'),
                          auth.get('queryParams'))
-        response = query(url, method=auth.get('method'), headers=auth.get('headers'), body=auth.get('body'))
-        return get_item_from_json(response.json(), field)
+        LOGGER.debug('Logging in: {} {} {}'.format(auth.get('method'), url, auth.get('bodyParams')))
+        response = query(url, method=auth.get('method'), headers=auth.get('headers'), body=auth.get('bodyParams'))
+        token = get_item_from_json(response.json(), field)
+        return token
 
     def _generate_token(self):
         if 'authentication' in self.config and self.config['authentication'] is not None:
@@ -275,7 +277,7 @@ class Argus:
         path_params = step.get('pathParams')
         query_params = step.get('queryParams')
         matrix_params = step.get('matrixParams')
-        body = step.get('body')
+        body_params = step.get('bodyParams')
         body_matrix_params = step.get('bodyMatrixParams')
         validation = step.get('validation')
 
@@ -303,9 +305,9 @@ class Argus:
         # Parsing body matrix params
         if body_matrix_params is not None:
             matrix_body_params_list = self._parse_matrix_params(body_matrix_params)
-            body_params_list = self._merge_params(id_, body, matrix_body_params_list)
+            body_params_list = self._merge_params(id_, body_params, matrix_body_params_list)
         else:
-            body_params_list = [body]
+            body_params_list = [body_params]
 
         # Cartesian product between query and body params
         step_params = [i for i in product(query_params_list, body_params_list)]
@@ -318,7 +320,7 @@ class Argus:
         # Creating steps
         steps = [
             _Step(id_=id_, path_params=path_params,
-                  query_params=step_params[i][0], body=step_params[i][1],
+                  query_params=step_params[i][0], body_params=step_params[i][1],
                   validation=validation)
             for i, id_ in enumerate(id_list)
         ]
@@ -330,9 +332,10 @@ class Argus:
                                               self.current.tests[0].path])
         self.url = create_url(url, self.current.tests[0].steps[0].path_params,
                               self.current.tests[0].steps[0].query_params)
-        LOGGER.debug('{} {} {}'.format(self.current.tests[0].method, self.url, self.current.tests[0].steps[0].body))
+        LOGGER.debug('Query: {} {} {}'.format(self.current.tests[0].method, self.url,
+                                              self.current.tests[0].steps[0].body_params))
         response = query(self.url, method=self.current.tests[0].method, headers=self.headers,
-                         body=self.current.tests[0].steps[0].body)
+                         body=self.current.tests[0].steps[0].body_params)
         self.response = response
 
     def execute(self):

@@ -8,7 +8,7 @@ tests:
       - id: step1
         queryParams:
           study: test@germline:ashkenazim
-        body:
+        bodyParams:
           clinicalAnalysis: CHG002O
         validation:
           # seconds

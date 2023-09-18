@@ -1,18 +1,25 @@
 import re
-import requests
 import json
 import json2html
+import logging
+
+LOGGER = logging.getLogger('argus_logger')
 
 
 def get_item_from_json(json_dict, field):
-    for item in field.split('.'):
-        items = list(filter(None, re.split(r'[\[\]]', item)))
-        key, indexes = items[0], map(int, items[1:])
-        json_dict = json_dict[key]
-        if indexes:
-            for i in indexes:
-                json_dict = json_dict[i]
-    return json_dict
+    try:
+        for item in field.split('.'):
+            items = list(filter(None, re.split(r'[\[\]]', item)))
+            key, indexes = items[0], map(int, items[1:])
+            json_dict = json_dict[key]
+            if indexes:
+                for i in indexes:
+                    json_dict = json_dict[i]
+        return json_dict
+    except IndexError as e:
+        msg = 'Unable to retrieve field "{}" from JSON "{}". Reason: "{}".'
+        LOGGER.error(msg.format(field, json_dict, e))
+        raise IndexError(e)
 
 
 def dot2python(field):

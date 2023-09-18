@@ -9,8 +9,8 @@ tests:
         queryParams:
           study: 1000G
           includeResult: true
-        body:
-          id: cohort2
+        bodyParams:
+          id: cohort4
         validation:
           results:
-            - match('responses[0].results[0].id', 'cohort2')
+            - match('responses[0].results[0].id', 'cohort4')
