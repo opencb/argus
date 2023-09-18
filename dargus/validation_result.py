@@ -1,4 +1,5 @@
 from datetime import datetime
+from utils import json_to_html
 
 
 class ValidationResult:
@@ -15,10 +16,24 @@ class ValidationResult:
         self.time = response.elapsed.total_seconds()
         self.params = current.tests[0].tasks[0].query_params
         self.status_code = response.status_code
-        self.status = all([v['result'] for v in validation])
+        self.status = self.get_status(validation)
         self.events = None
         self.version = None
         self.timestamp = int(datetime.now().strftime('%Y%m%d%H%M%S'))
 
+        self.validation_bool_to_str()
+
+    def validation_bool_to_str(self):
+        for v in self.validation:
+            v['result'] = 'PASS' if v['result'] else 'FALSE'
+
+    @staticmethod
+    def get_status(validation):
+        status = all([v['result'] for v in validation])
+        return 'PASS' if status is True else 'FALSE'
+
     def to_json(self):
         return self.__dict__
+
+    def to_html(self):
+        return json_to_html(self.to_json)

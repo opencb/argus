@@ -1,7 +1,6 @@
 import os
 import logging
 import json
-import requests
 import yaml
 
 
