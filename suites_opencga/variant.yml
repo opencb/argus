@@ -5,8 +5,8 @@ tests:
   path: /analysis/variant/query
   method: GET
   async: false
-  tasks:
-  - id: test_task
+  steps:
+  - id: test_step
     queryParams:
       study: germline:ashkenazim
       limit: 10

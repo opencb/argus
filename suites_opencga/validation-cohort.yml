@@ -4,8 +4,8 @@ tests:
     path: /cohorts/create
     method: POST
     async: false
-    tasks:
-      - id: task1
+    steps:
+      - id: step1
         queryParams:
           study: 1000G
           includeResult: true

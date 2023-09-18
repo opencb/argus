@@ -4,8 +4,8 @@ tests:
     path: /analysis/clinical/interpreter/exomiser/run
     method: POST
     async: true
-    tasks:
-      - id: task1
+    steps:
+      - id: step1
         queryParams:
           study: test@germline:ashkenazim
         body:

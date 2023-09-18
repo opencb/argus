@@ -5,7 +5,7 @@ tests:
     path: /feature/gene/{genes}/info
     method: GET
     async: false
-    tasks:
+    steps:
       - id: positive
         pathParams:
           genes: BRCA2

@@ -30,19 +30,19 @@ class _Suite:
 
 class _Test:
     def __init__(self, id_, tags=None, path=None, method=None, async_=None,
-                 tasks=None):
+                 steps=None):
         self.id_ = id_
         self.tags = tags
         self.path = path
         self.method = method
         self.async_ = async_
-        self.tasks = tasks
+        self.steps = steps
 
     def __str__(self):
         return str(self.__dict__)
 
 
-class _Task:
+class _Step:
     def __init__(self, id_, path_params=None, query_params=None, body=None,
                  validation=None):
         self.id_ = id_
@@ -79,11 +79,11 @@ class Argus:
 
         self.suite_ids = []
         self.test_ids = []
-        self.task_ids = []
+        self.step_ids = []
 
         self.current = None
         self.test = None
-        self.task = None
+        self.step = None
         self.token = None
         self.url = None
         self.headers = {}
@@ -211,12 +211,12 @@ class Argus:
                 if set(tags).intersection(set(validation['ignore_tag'])):
                     return None
 
-        tasks = []
-        for task in test.get('tasks'):
-            tasks += list(filter(None, self._parse_task(task)))
+        steps = []
+        for step in test.get('steps'):
+            steps += list(filter(None, self._parse_step(step)))
 
         test = _Test(id_=id_, tags=tags, path=path, method=method,
-                     async_=async_, tasks=tasks)
+                     async_=async_, steps=steps)
         return test
 
     @staticmethod
@@ -245,7 +245,7 @@ class Argus:
         return matrix_params
 
     @staticmethod
-    def _merge_params(task_id, query_params, matrix_params_list):
+    def _merge_params(step_id, query_params, matrix_params_list):
         query_params_list = []
         query_params = query_params or {}
         for matrix_params in matrix_params_list:
@@ -254,30 +254,30 @@ class Argus:
             duplicated = list(set(matrix_params.keys()) &
                               set(new_query_params.keys()))
             if duplicated:
-                msg = '[Task ID: "{}"] Some matrixParams are already' \
+                msg = '[Step ID: "{}"] Some matrixParams are already' \
                       ' defined in queryParams ("{}")'
                 raise ValueError(
-                    msg.format(task_id, '";"'.join(duplicated)))
+                    msg.format(step_id, '";"'.join(duplicated)))
 
             new_query_params.update(matrix_params)
             query_params_list.append(new_query_params)
         return query_params_list
 
-    def _parse_task(self, task):
-        # Getting task ID
-        id_ = task.get('id')
+    def _parse_step(self, step):
+        # Getting step ID
+        id_ = step.get('id')
         if id_ is None:
-            raise ValueError('Field "id" is required for each task')
-        if id_ in self.task_ids:
-            raise ValueError('Duplicated task ID "{}"'.format(id_))
-        self.task_ids.append(id_)
+            raise ValueError('Field "id" is required for each step')
+        if id_ in self.step_ids:
+            raise ValueError('Duplicated step ID "{}"'.format(id_))
+        self.step_ids.append(id_)
 
-        path_params = task.get('pathParams')
-        query_params = task.get('queryParams')
-        matrix_params = task.get('matrixParams')
-        body = task.get('body')
-        body_matrix_params = task.get('bodyMatrixParams')
-        validation = task.get('validation')
+        path_params = step.get('pathParams')
+        query_params = step.get('queryParams')
+        matrix_params = step.get('matrixParams')
+        body = step.get('body')
+        body_matrix_params = step.get('bodyMatrixParams')
+        validation = step.get('validation')
 
         # Parsing pathParams and queryParams
         if path_params is not None:
@@ -308,31 +308,31 @@ class Argus:
             body_params_list = [body]
 
         # Cartesian product between query and body params
-        task_params = [i for i in product(query_params_list, body_params_list)]
+        step_params = [i for i in product(query_params_list, body_params_list)]
 
         # Generating ID list
         id_list = [
-            '{}-{}'.format(id_, i+1) for i in range(len(task_params))
-        ] if len(task_params) > 1 else [id_]
+            '{}-{}'.format(id_, i+1) for i in range(len(step_params))
+        ] if len(step_params) > 1 else [id_]
 
-        # Creating tasks
-        tasks = [
-            _Task(id_=id_, path_params=path_params,
-                  query_params=task_params[i][0], body=task_params[i][1],
+        # Creating steps
+        steps = [
+            _Step(id_=id_, path_params=path_params,
+                  query_params=step_params[i][0], body=step_params[i][1],
                   validation=validation)
             for i, id_ in enumerate(id_list)
         ]
 
-        return list(filter(None, tasks))
+        return list(filter(None, steps))
 
-    def query_task(self):
+    def query_step(self):
         url = '/'.join(s.strip('/') for s in [self.current.base_url,
                                               self.current.tests[0].path])
-        self.url = create_url(url, self.current.tests[0].tasks[0].path_params,
-                              self.current.tests[0].tasks[0].query_params)
-        LOGGER.debug('{} {} {}'.format(self.current.tests[0].method, self.url, self.current.tests[0].tasks[0].body))
+        self.url = create_url(url, self.current.tests[0].steps[0].path_params,
+                              self.current.tests[0].steps[0].query_params)
+        LOGGER.debug('{} {} {}'.format(self.current.tests[0].method, self.url, self.current.tests[0].steps[0].body))
         response = query(self.url, method=self.current.tests[0].method, headers=self.headers,
-                         body=self.current.tests[0].tasks[0].body)
+                         body=self.current.tests[0].steps[0].body)
         self.response = response
 
     def execute(self):
@@ -341,10 +341,10 @@ class Argus:
             self.current = suite
             for test in suite.tests:
                 self.current.tests = [test]
-                for task in test.tasks:
-                    self.current.tests[0].tasks = [task]
-                    LOGGER.debug('Querying: Suite "{}"; Test "{}"; Task "{}"'.format(suite.id_, test.id_, task.id_))
-                    self.query_task()
+                for step in test.steps:
+                    self.current.tests[0].steps = [step]
+                    LOGGER.debug('Querying: Suite "{}"; Test "{}"; Step "{}"'.format(suite.id_, test.id_, step.id_))
+                    self.query_step()
                     if not self.current.tests[0].async_:
                         res = self.validator.validate(
                             self.response, self.current

@@ -6,7 +6,7 @@ class ValidationResult:
     def __init__(self, current, url, response, validation, headers=None):
         self.suite_id = current.id_
         self.test_id = current.tests[0].id_
-        self.task_id = current.tests[0].tasks[0].id_
+        self.step_id = current.tests[0].steps[0].id_
         self.url = url
         self.validation = validation
         self.headers = self.get_headers(headers)
@@ -14,7 +14,7 @@ class ValidationResult:
         self.method = current.tests[0].method
         self.async_ = current.tests[0].async_
         self.time = response.elapsed.total_seconds()
-        self.params = current.tests[0].tasks[0].query_params
+        self.params = current.tests[0].steps[0].query_params
         self.status_code = response.status_code
         self.status = self.get_status(validation)
         self.events = None

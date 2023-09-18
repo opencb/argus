@@ -10,7 +10,7 @@ class Validator:
         self._rest_response = None
         self._rest_response_json = None
         self._current = None
-        self._task = None
+        self._step = None
         self._stored_values = {}
         self._token = token
 
@@ -75,7 +75,7 @@ class Validator:
             value = value.replace(v, dot2python(v))
 
         # Internal variables (e.g. "$QUERY_PARAMS")
-        value = value.replace('$QUERY_PARAMS', 'self.task.query_params')
+        value = value.replace('$QUERY_PARAMS', 'self.step.query_params')
 
         value = 'lambda ' + value.replace('->', ':')
         return value
@@ -145,26 +145,26 @@ class Validator:
 
         return results
 
-    def validate_time(self, task_time):
+    def validate_time(self, step_time):
         request_time = self._rest_response.elapsed.total_seconds()
         time_deviation = self.validation['timeDeviation']
-        max_time = task_time + task_time*time_deviation/100
-        min_time = task_time - task_time*time_deviation/100
+        max_time = step_time + step_time*time_deviation/100
+        min_time = step_time - step_time*time_deviation/100
         if not min_time < request_time < max_time:
             return False
         return True
 
-    def validate_headers(self, task_headers, exclude=None):
-        for key in task_headers.keys():
+    def validate_headers(self, step_headers, exclude=None):
+        for key in step_headers.keys():
             if key not in exclude and (
                     key not in self._rest_response.headers.keys() or
-                    self._rest_response.headers[key] != task_headers[key]
+                    self._rest_response.headers[key] != step_headers[key]
             ):
                 return False
         return True
 
-    def validate_status_code(self, task_status_code):
-        if not task_status_code == self._rest_response.status_code:
+    def validate_status_code(self, step_status_code):
+        if not step_status_code == self._rest_response.status_code:
             return False
         return True
 
@@ -172,37 +172,37 @@ class Validator:
         self._rest_response = response
         self._rest_response_json = response.json()
         self._current = current
-        self._task = self._current.tests[0].tasks[0]
+        self._step = self._current.tests[0].steps[0]
         results = []
 
         # Time
-        if 'time' in self._task.validation and not self.validation['ignore_time']:
+        if 'time' in self._step.validation and not self.validation['ignore_time']:
             results.append(
                 {'function': 'validate_time',
-                 'result': self.validate_time(self._task.validation['time'])}
+                 'result': self.validate_time(self._step.validation['time'])}
             )
 
         # Headers
-        if 'headers' in self._task.validation:
+        if 'headers' in self._step.validation:
             result_headers = self.validate_headers(
-                self._task.validation['headers'],
+                self._step.validation['headers'],
                 exclude=self.validation['ignore_headers']
             )
             results.append({'function': 'validate_headers',
                             'result': result_headers})
 
         # Status code
-        task_status_code = self._task.validation.get('status_code') \
-            if 'status_code' in self._task.validation else 200
+        step_status_code = self._step.validation.get('status_code') \
+            if 'status_code' in self._step.validation else 200
         results.append(
             {'function': 'validate_status_code',
-             'result': self.validate_status_code(task_status_code)}
+             'result': self.validate_status_code(step_status_code)}
         )
 
         # Results
-        if 'results' in self._task.validation:
+        if 'results' in self._step.validation:
             results += self._validate_results(
-                self._task.validation['results'],
+                self._step.validation['results'],
                 exclude=self.validation['ignore_results']
             )
 
