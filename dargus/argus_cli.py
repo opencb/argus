@@ -51,6 +51,8 @@ class ArgusCLI:
                                     help='validator file path')
         execute_parser.add_argument('-s', '--suites',
                                     help='suites to run')
+        execute_parser.add_argument('-w', '--working_dir',
+                                    help='working file directory to access custom input/output files')
 
     def _stats(self):
         stats_parser = self._subparsers.add_parser('stats', parents=[self._parent_parser])
@@ -90,7 +92,8 @@ def main():
     argus_config = ArgusConfiguration(
         args.config,
         validator=args.validator,
-        suites=args.suites
+        suites=args.suites,
+        working_dir=args.working_dir
     ).get_config()
 
     client_generator = Argus(args.suite_dir, argus_config, args.output_prefix, args.output_dir)

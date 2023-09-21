@@ -23,10 +23,10 @@ class Validator:
         validation = {
             'timeDeviation': 100,
             'asyncRetryTime': 10,
-            'ignore_time': False,
-            'ignore_headers': [],
-            'ignore_results': [],
-            'fail_on_first': False
+            'ignoreTime': False,
+            'ignoreHeaders': [],
+            'ignoreResults': [],
+            'failOnFirst': False
         }
         return validation
 
@@ -98,6 +98,13 @@ class Validator:
         else:
             return sorted(field_value) == sorted(value)
 
+    def list_intersect(self, field, value, all_intersect=True):
+        field_value = self.get_item(field)
+        intersection = [item for item in list(value) if item in list(field_value)]
+        if intersection == value or ((not all_intersect) and len(intersection) > 0):
+            return True
+        return False
+
     def list_sorted(self, field, reverse=False):
         field_value = self.get_item(field)
         return field_value == sorted(field_value, reverse=reverse)
@@ -133,8 +140,8 @@ class Validator:
 
             result = eval('self.{}({})'.format(name, args))
 
-            # Raise error if fail_on_first is True
-            if self.validation['fail_on_first'] and not result:
+            # Raise error if failOnFirst is True
+            if self.validation['failOnFirst'] and not result:
                 msg = 'Validation function "{}" returned False'
                 raise ValidationError(msg.format(method))
 
@@ -148,8 +155,8 @@ class Validator:
     def validate_time(self, step_time):
         request_time = self._rest_response.elapsed.total_seconds()
         time_deviation = self.validation['timeDeviation']
-        max_time = step_time + step_time*time_deviation/100
-        min_time = step_time - step_time*time_deviation/100
+        max_time = step_time + time_deviation
+        min_time = min(0, abs(step_time - time_deviation))
         if not min_time < request_time < max_time:
             return False
         return True
@@ -176,7 +183,7 @@ class Validator:
         results = []
 
         # Time
-        if 'time' in self._step.validation and not self.validation['ignore_time']:
+        if 'time' in self._step.validation and not self.validation['ignoreTime']:
             results.append(
                 {'function': 'validate_time',
                  'result': self.validate_time(self._step.validation['time'])}
@@ -186,7 +193,7 @@ class Validator:
         if 'headers' in self._step.validation:
             result_headers = self.validate_headers(
                 self._step.validation['headers'],
-                exclude=self.validation['ignore_headers']
+                exclude=self.validation['ignoreHeaders']
             )
             results.append({'function': 'validate_headers',
                             'result': result_headers})
@@ -203,7 +210,7 @@ class Validator:
         if 'results' in self._step.validation:
             results += self._validate_results(
                 self._step.validation['results'],
-                exclude=self.validation['ignore_results']
+                exclude=self.validation['ignoreResults']
             )
 
         return results

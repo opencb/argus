@@ -8,22 +8,15 @@ LOGGER = logging.getLogger('argus_logger')
 
 
 class ArgusConfiguration(object):
-    def __init__(self, config_input, validator=None, suites=None):
-        # Default config params
-        self._config = {
-            'authentication': None,
-            'suites': None,
-            'validation': None,
-            'validator': None,
-            'tests': None
-        }
+    def __init__(self, config_input, validator=None, suites=None, working_dir=None):
+        self._config = {}
 
-        self.load_config(config_input, validator, suites)
+        self.load_config(config_input, validator, suites, working_dir)
         LOGGER.debug('Configuration: {}'.format(self._config))
 
-        self._validate_configuration(self._config)
+        self._validate_configuration()
 
-    def load_config(self, config_input, validator, suites):
+    def load_config(self, config_input, validator, suites, working_dir):
         if isinstance(config_input, dict):
             for key in config_input:
                 self._config[key] = config_input[key]
@@ -32,11 +25,16 @@ class ArgusConfiguration(object):
             for key in config_dict:
                 self._config[key] = config_dict[key]
 
+        print(self._config)
+
         if validator is not None:
             self._config['validator'] = os.path.realpath(os.path.expanduser(validator))
 
         if suites is not None:
             self._config['suites'] = suites.split(',')
+
+        if working_dir is not None:
+            self._config['workingDir'] = os.path.realpath(os.path.expanduser(working_dir))
 
     @staticmethod
     def _get_dictionary_from_file(config_fpath):
@@ -59,26 +57,9 @@ class ArgusConfiguration(object):
 
         return config_dict
 
-    @staticmethod
-    def _validate_configuration(config):
-        if config is None:
+    def _validate_configuration(self):
+        if self._config is None:
             raise ValueError('Missing configuration dictionary')
-
-    @property
-    def suites(self):
-        return self._config['suites']
-
-    @suites.setter
-    def suites(self, new_suites):
-        self._config['suites'] = new_suites
-
-    @property
-    def authentication(self):
-        return self._config['authentication']
-
-    @authentication.setter
-    def authentication(self, new_authentication):
-        self._config['authentication'] = new_authentication
 
     def get_config(self):
         return self._config
