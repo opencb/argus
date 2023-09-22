@@ -1,6 +1,8 @@
 import os
 import sys
 import logging
+import random
+import string
 
 import yaml
 import gzip
@@ -222,22 +224,6 @@ class Argus:
         return test
 
     @staticmethod
-    def _parse_content(params):
-        for field in params:
-            if isinstance(params[field], dict) and field != 'queryMatrixParams':
-                if 'file' in params[field]:
-                    fpath = params[field]['file']
-                    if fpath.endswith('.gz'):
-                        lines = gzip.open(fpath, 'r').readlines()
-                    else:
-                        lines = open(fpath, 'r').readlines()
-                    params[field] = ','.join(lines)
-                if 'env' in params[field]:
-                    env_var = os.environ[params[field]['env']]
-                    params[field] = env_var
-        return params
-
-    @staticmethod
     def _parse_matrix_params(matrix_params):
         keys, values = list(matrix_params.keys()), list(matrix_params.values())
         value_product = list(product(*values))
@@ -265,6 +251,49 @@ class Argus:
             query_params_list.append(new_query_params)
         return query_params_list
 
+    def _parse_body(self, step_id, body_params, body_matrix_params, body_file):
+        if (body_params is not None or body_matrix_params is not None) and body_file is not None:
+            msg = '[Step ID: "{}"] "bodyParams" and "bodyMatrixParams" are not compatible with "bodyFile"'
+            raise ValueError(msg)
+
+        body_params_list = [None]
+        if body_params is not None:
+            body_params_list = [body_params]
+
+        # Parsing body matrix params
+        if body_matrix_params is not None:
+            matrix_body_params_list = self._parse_matrix_params(body_matrix_params)
+            body_params_list = self._merge_params(step_id, body_params, matrix_body_params_list)
+
+        # Parsing body file
+        if body_file is not None:
+            if not body_file.endswith('.json'):
+                msg = '[Step ID: "{}"] Only JSON files (.json) are supported for "bodyFile" param'
+                raise IOError(msg.format(step_id))
+            body_fhand = open(body_file, 'r')
+            body_params_list = json.loads(body_fhand.read())
+
+        return body_params_list
+
+    @staticmethod
+    def replace_template_vars(params):
+        for param in params:
+            if '${' in params[param]:
+                template, func, args = re.findall('.*(\${(.*\((.*)\))}).*', params[param])[0]
+                if func.startswith('RANDOM'):
+                    n = int(args) if args else 6
+                    random_value = ''.join(random.choices(string.ascii_uppercase + string.digits, k=n))
+                elif func.startswith('RANDINT'):
+                    a, b = map(int, re.sub(re.compile(r'\s+'), '', args).split(','))
+                    random_value = str(random.randint(a, b))
+                elif func.startswith('RANDCHOICE'):
+                    choices = re.sub(re.compile(r'\s+'), '', args).split(',')
+                    random_value = random.choice(choices)
+                else:
+                    raise ValueError('Template function "{}" not supported'.format(template))
+                params[param] = params[param].replace(template, random_value)
+        return params
+
     def _parse_step(self, step):
         # Getting step ID
         id_ = step.get('id')
@@ -279,13 +308,8 @@ class Argus:
         query_matrix_params = step.get('queryMatrixParams')
         body_params = step.get('bodyParams')
         body_matrix_params = step.get('bodyMatrixParams')
+        body_file = step.get('bodyFile')
         validation = step.get('validation')
-
-        # Parsing pathParams and queryParams
-        if path_params is not None:
-            path_params = self._parse_content(path_params)
-        if query_params is not None:
-            query_params = self._parse_content(query_params)
 
         # Parsing matrix params
         if query_matrix_params is not None:
@@ -302,12 +326,13 @@ class Argus:
                     if key not in query_params:
                         query_params[key] = default_params[key]
 
-        # Parsing body matrix params
-        if body_matrix_params is not None:
-            matrix_body_params_list = self._parse_matrix_params(body_matrix_params)
-            body_params_list = self._merge_params(id_, body_params, matrix_body_params_list)
-        else:
-            body_params_list = [body_params]
+        # Parsing body params
+        body_params_list = self._parse_body(id_, body_params, body_matrix_params, body_file)
+
+        # Replace template variables
+        path_params = self.replace_template_vars(path_params)
+        query_params_list = [self.replace_template_vars(params) if params else None for params in query_params_list]
+        body_params_list = [self.replace_template_vars(params) if params else None for params in body_params_list]
 
         # Cartesian product between query and body params
         step_params = [i for i in product(query_params_list, body_params_list)]

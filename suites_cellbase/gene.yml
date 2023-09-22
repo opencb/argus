@@ -11,6 +11,9 @@ tests:
           genes: BRCA2
         queryParams:
           assembly: grch38
+          test: a_${RANDOM(3)}
+          test1: a_${RANDINT(10, 50)}_b
+          test2: ${RANDCHOICE(A, B)}_b
         queryMatrixParams:
           source:
             - ensembl

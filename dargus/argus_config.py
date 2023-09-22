@@ -25,8 +25,6 @@ class ArgusConfiguration(object):
             for key in config_dict:
                 self._config[key] = config_dict[key]
 
-        print(self._config)
-
         if validator is not None:
             self._config['validator'] = os.path.realpath(os.path.expanduser(validator))
 
