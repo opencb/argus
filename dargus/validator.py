@@ -183,14 +183,14 @@ class Validator:
         results = []
 
         # Time
-        if 'time' in self._step.validation and not self.validation['ignoreTime']:
+        if self._step.validation and 'time' in self._step.validation and not self.validation['ignoreTime']:
             results.append(
                 {'function': 'validate_time',
                  'result': self.validate_time(self._step.validation['time'])}
             )
 
         # Headers
-        if 'headers' in self._step.validation:
+        if self._step.validation and 'headers' in self._step.validation:
             result_headers = self.validate_headers(
                 self._step.validation['headers'],
                 exclude=self.validation['ignoreHeaders']
@@ -199,15 +199,16 @@ class Validator:
                             'result': result_headers})
 
         # Status code
-        step_status_code = self._step.validation.get('status_code') \
-            if 'status_code' in self._step.validation else 200
+        step_status_code = 200
+        if self._step.validation and 'status_code' in self._step.validation:
+            step_status_code = self._step.validation.get('status_code')
         results.append(
             {'function': 'validate_status_code',
              'result': self.validate_status_code(step_status_code)}
         )
 
         # Results
-        if 'results' in self._step.validation:
+        if self._step.validation and 'results' in self._step.validation:
             results += self._validate_results(
                 self._step.validation['results'],
                 exclude=self.validation['ignoreResults']
