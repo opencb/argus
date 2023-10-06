@@ -5,18 +5,18 @@ validator: /home/dapregi/dev/argus/opencga_validator.py
 workingDir: /home/dapregi/tmp/argus
 
 # BASE URL
-baseUrl: https://test.app.zettagenomics.com/xeta-14s/opencga/webservices/rest/v2
+baseUrl: https://test.app.zettagenomics.com/reference/opencga/webservices/rest/v2
 
 # AUTHENTICATION INFO
 #authentication:
 #  # token: ssasasdsadsadasd.sdasd.asdasd
 #  # token: env(OPENCGA_TOKEN)
 #  token: login(responses[0].results[0].token)
-#  url: https://test.app.zettagenomics.com/xeta-19e/opencga/webservices/rest/v2/users/login
+#  url: https://test.app.zettagenomics.com/reference/opencga/webservices/rest/v2/users/login
 #  headers:
 #    Accept-Encoding: gzip
 #  method: POST
-#  body: {"user": "USER", "password": "PASS"}
+#  bodyParams: {"user": "USER", "password": "PASS"}
 
 # DEFAULT REST PARAMETERS
 #rest:

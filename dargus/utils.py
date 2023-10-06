@@ -7,6 +7,7 @@ LOGGER = logging.getLogger('argus_logger')
 
 
 def get_item_from_json(json_dict, field):
+    json_traceback = json_dict.copy()
     try:
         for item in field.split('.'):
             items = list(filter(None, re.split(r'[\[\]]', item)))
@@ -18,7 +19,7 @@ def get_item_from_json(json_dict, field):
         return json_dict
     except IndexError as e:
         msg = 'Unable to retrieve field "{}" from JSON "{}". Reason: "{}".'
-        LOGGER.error(msg.format(field, json_dict, e))
+        LOGGER.error(msg.format(field, json_traceback, e))
         raise IndexError(e)
 
 

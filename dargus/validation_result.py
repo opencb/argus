@@ -25,9 +25,11 @@ class ValidationResult:
 
     @staticmethod
     def get_headers(headers):
+        new_headers = None
         if headers is not None and 'Authorization' in headers:
-            headers['Authorization'] = 'REDACTED'
-        return headers
+            new_headers = headers.copy()
+            new_headers['Authorization'] = 'REDACTED'
+        return new_headers
 
     @staticmethod
     def get_status(validation):
