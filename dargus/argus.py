@@ -271,27 +271,28 @@ class Argus:
                 msg = '[Step ID: "{}"] Only JSON files (.json) are supported for "bodyFile" param'
                 raise IOError(msg.format(step_id))
             body_fhand = open(body_file, 'r')
-            body_params_list = json.loads(body_fhand.read())
+            body_params_list = [json.loads(body_fhand.read())]
 
         return body_params_list
 
     @staticmethod
     def replace_template_vars(params):
-        for param in params:
-            if '${' in params[param]:
-                template, func, args = re.findall('.*(\${(.*\((.*)\))}).*', params[param])[0]
-                if func.startswith('RANDOM'):
-                    n = int(args) if args else 6
-                    random_value = ''.join(random.choices(string.ascii_uppercase + string.digits, k=n))
-                elif func.startswith('RANDINT'):
-                    a, b = map(int, re.sub(re.compile(r'\s+'), '', args).split(','))
-                    random_value = str(random.randint(a, b))
-                elif func.startswith('RANDCHOICE'):
-                    choices = re.sub(re.compile(r'\s+'), '', args).split(',')
-                    random_value = random.choice(choices)
-                else:
-                    raise ValueError('Template function "{}" not supported'.format(template))
-                params[param] = params[param].replace(template, random_value)
+        if params:
+            for param in params:
+                if isinstance(params[param], str) and '${' in params[param]:
+                    template, func, args = re.findall('.*(\${(.*\((.*)\))}).*', params[param])[0]
+                    if func.startswith('RANDOM'):
+                        n = int(args) if args else 6
+                        random_value = ''.join(random.choices(string.ascii_uppercase + string.digits, k=n))
+                    elif func.startswith('RANDINT'):
+                        a, b = map(int, re.sub(re.compile(r'\s+'), '', args).split(','))
+                        random_value = str(random.randint(a, b))
+                    elif func.startswith('RANDCHOICE'):
+                        choices = re.sub(re.compile(r'\s+'), '', args).split(',')
+                        random_value = random.choice(choices)
+                    else:
+                        raise ValueError('Template function "{}" not supported'.format(template))
+                    params[param] = params[param].replace(template, random_value)
         return params
 
     def _parse_step(self, step):
