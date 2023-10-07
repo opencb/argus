@@ -5,14 +5,14 @@ from dargus.argus_exceptions import ValidationError
 
 
 class Validator:
-    def __init__(self, config, token=None):
+    def __init__(self, config, auth_token=None):
         self._config = config
         self._rest_response = None
         self._rest_response_json = None
         self._current = None
         self._step = None
         self._stored_values = {}
-        self._token = token
+        self._auth_token = auth_token
 
         self.validation = self.get_default_validation()
         if self._config.get('validation') is not None:
@@ -216,5 +216,11 @@ class Validator:
 
         return results
 
-    def validate_async(self, async_jobs):
-        pass
+    def get_async_response_for_validation(self, response, current, url, method, headers, auth_token):
+        return response
+
+    def validate_response(self, response):
+        return True, None
+
+    def validate_async_response(self, response):
+        return True, None

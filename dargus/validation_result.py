@@ -3,7 +3,7 @@ from utils import json_to_html
 
 
 class ValidationResult:
-    def __init__(self, current, url, response, validation, headers=None):
+    def __init__(self, current, url, response, validation, events=None, headers=None):
         self.suite_id = current.id_
         self.test_id = current.tests[0].id_
         self.step_id = current.tests[0].steps[0].id_
@@ -17,7 +17,7 @@ class ValidationResult:
         self.params = current.tests[0].steps[0].query_params
         self.status_code = response.status_code
         self.status = self.get_status(validation)
-        self.events = None
+        self.events = events
         self.version = None
         self.timestamp = int(datetime.now().strftime('%Y%m%d%H%M%S'))
 

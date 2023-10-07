@@ -1,16 +1,18 @@
 import os
-import sys
 import logging
 import random
 import string
+import importlib.util
 
 import yaml
-import gzip
 import re
 import json
 from itertools import product
 from datetime import datetime
 
+from dargus.suite import Suite
+from dargus.test import Test
+from dargus.step import Step
 from dargus.validator import Validator
 from dargus.validation_result import ValidationResult
 from dargus.utils import get_item_from_json, create_url
@@ -20,47 +22,13 @@ from dargus.commons import query
 LOGGER = logging.getLogger('argus_logger')
 
 
-class _Suite:
-    def __init__(self, id_, base_url=None, tests=None):
-        self.id_ = id_
-        self.base_url = base_url
-        self.tests = tests
-
-    def __str__(self):
-        return str(self.__dict__)
-
-
-class _Test:
-    def __init__(self, id_, tags=None, path=None, method=None, async_=None,
-                 steps=None):
-        self.id_ = id_
-        self.tags = tags
-        self.path = path
-        self.method = method
-        self.async_ = async_
-        self.steps = steps
-
-    def __str__(self):
-        return str(self.__dict__)
-
-
-class _Step:
-    def __init__(self, id_, path_params=None, query_params=None, body_params=None,
-                 validation=None):
-        self.id_ = id_
-        self.path_params = path_params
-        self.query_params = query_params
-        self.body_params = body_params
-        self.validation = validation
-
-    def __str__(self):
-        return str(self.__dict__)
-
-
 class Argus:
     def __init__(self, suite_dir, argus_config, output_prefix=None, output_dir=None):
-        self.test_folder = os.path.realpath(os.path.expanduser(suite_dir))
 
+        # Getting suite directory
+        self.suite_dir = os.path.realpath(os.path.expanduser(suite_dir))
+
+        # Getting argus configuration
         self.config = argus_config
 
         # Setting up output directory
@@ -83,65 +51,46 @@ class Argus:
         self.test_ids = []
         self.step_ids = []
 
-        self.current = None
-        self.test = None
-        self.step = None
-        self.token = None
-        self.url = None
-        self.headers = {}
-        self.response = None
-        self.async_jobs = []
+        self.auth_token = None
         self.validation_results = []
 
-        self._parse_files(self.test_folder)
-        self._generate_headers()
         self._generate_token()
+        self._parse_files(self.suite_dir)
 
         # Loading validator
         if 'validator' in self.config and self.config['validator'] is not None:
             LOGGER.debug('Loading custom validator from "{}"'.format(self.config['validator']))
-            import importlib.util
-            val_path = self.config['validator']
-            val_fname = os.path.basename(val_path)
-            val_name = val_fname[:-3] if val_fname.endswith('.py') else val_fname
-            cls_name = ''.join(x.title() for x in val_name.split('_'))
-            spec = importlib.util.spec_from_file_location(cls_name, val_path)
+            validator_fpath = self.config['validator']
+            validator_fname = os.path.basename(validator_fpath)
+            validator_name = validator_fname[:-3] if validator_fname.endswith('.py') else validator_fname
+            cls_name = ''.join(x.title() for x in validator_name.split('_'))
+            spec = importlib.util.spec_from_file_location(cls_name, validator_fpath)
             foo = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(foo)
             validator_class = getattr(foo, cls_name)
-            self.validator = validator_class(
-                config=self.config, token=self.token
-            )
+            self.validator = validator_class(config=self.config, auth_token=self.auth_token)
         else:
-            self.validator = Validator(
-                config=self.config, token=self.token
-            )
-
-    def _generate_headers(self):
-        if 'rest' in self.config and self.config['rest'] is not None and self.config['rest']['headers']:
-            self.headers = self.config['rest']['headers']
+            self.validator = Validator(config=self.config, auth_token=self.auth_token)
 
     @staticmethod
     def _login(auth, field):
-        url = create_url(auth['url'], auth.get('pathParams'),
-                         auth.get('queryParams'))
+        url = create_url(url=auth['url'], path_params=auth.get('pathParams'), query_params=auth.get('queryParams'))
         LOGGER.debug('Logging in: {} {} {}'.format(auth.get('method'), url, auth.get('bodyParams')))
         response = query(url, method=auth.get('method'), headers=auth.get('headers'), body=auth.get('bodyParams'))
-        token = get_item_from_json(response.json(), field)
-        return token
+        auth_token = get_item_from_json(response.json(), field)
+        return auth_token
 
     def _generate_token(self):
         if 'authentication' in self.config and self.config['authentication'] is not None:
-            auth = self.config['authentication']
-            token_func = re.findall(r'^(.+)\((.+)\)$', auth['token'])
+            authentication = self.config['authentication']
+            token_func = re.findall(r'^(.+)\((.+)\)$', authentication['token'])
             if token_func:
                 if token_func[0][0] == 'env':
-                    self.token = os.environ[token_func[1]]
+                    self.auth_token = os.environ[token_func[1]]
                 elif token_func[0][0] == 'login':
-                    self.token = self._login(auth, token_func[0][1])
+                    self.auth_token = self._login(authentication, token_func[0][1])
             else:
-                self.token = auth['token']
-            self.headers['Authorization'] = 'Bearer {}'.format(self.token)
+                self.auth_token = authentication['token']
 
     def _parse_files(self, test_folder):
         fpaths = [os.path.join(test_folder, file)
@@ -167,7 +116,7 @@ class Argus:
         if id_ is None:
             raise ValueError('Field "id" is required for each suite')
         if id_ in self.suite_ids:
-            raise ValueError('Duplicated suite IDs "{}"'.format(id_))
+            raise ValueError('Duplicated suite ID "{}"'.format(id_))
         self.suite_ids.append(id_)
 
         # Filtering suites to run
@@ -180,11 +129,9 @@ class Argus:
             suite['baseUrl'] = self.config['baseUrl']
         base_url = suite.get('baseUrl')
 
-        tests = list(filter(
-            None, [self._parse_test(test) for test in suite.get('tests')]
-        ))
+        tests = list(filter(None, [self._parse_test(test) for test in suite.get('tests')]))
 
-        suite = _Suite(id_=id_, base_url=base_url, tests=tests)
+        suite = Suite(id_=id_, base_url=base_url, tests=tests)
 
         return suite
 
@@ -215,12 +162,20 @@ class Argus:
                 if set(tags).intersection(set(validation['ignore_tag'])):
                     return None
 
+        # Getting test headers
+        headers = {}
+        if 'headers' in self.config:
+            headers.update(self.config['headers'])
+        if test.get('headers'):
+            headers.update(test.get('headers'))
+        if self.auth_token:
+            headers['Authorization'] = 'Bearer {}'.format(self.auth_token)
+
         steps = []
         for step in test.get('steps'):
             steps += list(filter(None, self._parse_step(step)))
 
-        test = _Test(id_=id_, tags=tags, path=path, method=method,
-                     async_=async_, steps=steps)
+        test = Test(id_=id_, tags=tags, path=path, method=method, headers=headers, async_=async_, steps=steps)
         return test
 
     @staticmethod
@@ -320,8 +275,8 @@ class Argus:
             query_params_list = [query_params]
 
         # Adding default queryParams
-        if 'rest' in self.config and self.config['rest'] is not None and self.config['rest']['queryParams']:
-            default_params = self.config['rest']['queryParams']
+        if 'queryParams' in self.config and self.config['queryParams'] is not None:
+            default_params = self.config['queryParams']
             for query_params in query_params_list:
                 for key in default_params:
                     if key not in query_params:
@@ -345,67 +300,94 @@ class Argus:
 
         # Creating steps
         steps = [
-            _Step(id_=id_, path_params=path_params,
-                  query_params=step_params[i][0], body_params=step_params[i][1],
-                  validation=validation)
+            Step(id_=id_, path_params=path_params, query_params=step_params[i][0], body_params=step_params[i][1],
+                 validation=validation)
             for i, id_ in enumerate(id_list)
         ]
 
         return list(filter(None, steps))
 
-    def query_step(self):
-        url = '/'.join(s.strip('/') for s in [self.current.base_url,
-                                              self.current.tests[0].path])
-        self.url = create_url(url, self.current.tests[0].steps[0].path_params,
-                              self.current.tests[0].steps[0].query_params)
-        LOGGER.debug('Query: {} {} {}'.format(self.current.tests[0].method, self.url,
-                                              self.current.tests[0].steps[0].body_params))
-        response = query(self.url, method=self.current.tests[0].method, headers=self.headers,
-                         body=self.current.tests[0].steps[0].body_params)
-        self.response = response
+    def get_validation_results(self, response, current, url, headers):
+        # Validating response
+        validation = []
+        if not current.tests[0].async_:  # Non-asynchronous queries
+            response_is_valid, events = self.validator.validate_response(response)
+            if response_is_valid:
+                validation = self.validator.validate(response, current)
+        else:  # Asynchronous queries
+            response_is_valid, events = self.validator.validate_async_response(response)
+            if response_is_valid:
+                validation = self.validator.validate(response, current)
 
-    def execute(self):
-        validation_results = []
-        for suite in self.suites:
-            self.current = suite
-            for test in suite.tests:
-                self.current.tests = [test]
-                for step in test.steps:
-                    self.current.tests[0].steps = [step]
-                    LOGGER.debug('Querying: Suite "{}"; Test "{}"; Step "{}"'.format(suite.id_, test.id_, step.id_))
-                    self.query_step()
-                    if not self.current.tests[0].async_:
-                        res = self.validator.validate(
-                            self.response, self.current
-                        )
-                        vr = ValidationResult(
-                            current=self.current,
-                            url=self.url,
-                            response=self.response,
-                            validation=res,
-                            headers=self.headers,
-                        )
-                        validation_results.append(vr)
+        # Creating validation result
+        vr = ValidationResult(current=current,
+                              url=url,
+                              response=response,
+                              validation=validation,
+                              events=events,
+                              headers=headers)
+        self.validation_results.append(vr)
 
-                    else:
-                        self.async_jobs.append(
-                            {
-                                'current': self.current,
-                                'url': self.url,
-                                'headers': self.headers,
-                                'response': self.response
-                            }
-                        )
-            if self.async_jobs:
-                async_res = self.validator.validate_async(self.async_jobs)
-                validation_results += async_res
+    def write_output(self):
+        """Write validation results in different file formats"""
 
         # Writing to JSON file
-        out_fhand = open(os.path.join(self.out_fpath, self.out_prefix + '.json'), 'w')
-        out_fhand.write('\n'.join([json.dumps(vr.to_json()) for vr in validation_results]) + '\n')
+        out_fpath_json = os.path.join(self.out_fpath, self.out_prefix + '.json')
+        LOGGER.debug('Writing results to "{}"'.format(out_fpath_json))
+        out_fhand = open(out_fpath_json, 'w')
+        out_fhand.write('\n'.join([json.dumps(vr.to_json()) for vr in self.validation_results]) + '\n')
         out_fhand.close()
 
         # Writing to HTML file
-        out_fhand = open(os.path.join(self.out_fpath, self.out_prefix + '.html'), 'w')
-        out_fhand.write('\n'.join([vr.to_html() for vr in validation_results]) + '\n')
+        out_fpath_html = os.path.join(self.out_fpath, self.out_prefix + '.html')
+        LOGGER.debug('Writing results to "{}"'.format(out_fpath_html))
+        out_fhand = open(out_fpath_html, 'w')
+        out_fhand.write('\n'.join([vr.to_html() for vr in self.validation_results]) + '\n')
         out_fhand.close()
+
+    def execute(self):
+        """
+        Executes the validation of every suite-test-step:
+            - Create URL and other querying parameters
+            - Query the webservice
+            - Validate the response
+            - Write output files with validation results
+        """
+
+        for suite in self.suites:
+            current = suite
+            for test in suite.tests:
+                current.tests = [test]
+                for step in test.steps:
+                    current.tests[0].steps = [step]
+
+                    # Getting query parameters
+                    LOGGER.debug('Creating URL: Suite "{}"; Test "{}"; Step "{}"'.format(suite.id_, test.id_, step.id_))
+                    url = create_url(url='/'.join([current.base_url.strip('/'),
+                                                   current.tests[0].path.strip('/')]),
+                                     path_params=current.tests[0].steps[0].path_params,
+                                     query_params=current.tests[0].steps[0].query_params)
+                    method = current.tests[0].method
+                    headers = current.tests[0].headers
+                    body = current.tests[0].steps[0].body_params
+
+                    # Querying current suite-test-step
+                    LOGGER.debug('Querying: Suite "{}"; Test "{}"; Step "{}"'.format(suite.id_, test.id_, step.id_))
+                    LOGGER.debug('Query: {} {} {}'.format(method, url, body))
+                    if not current.tests[0].async_:  # Non-asynchronous queries
+                        response = query(url=url, method=method, headers=headers, body=body)
+                    else:  # Asynchronous queries
+                        response = self.validator.get_async_response_for_validation(
+                            response=query(url=url, method=method, headers=headers, body=body),
+                            current=current,
+                            url=url, method=method,
+                            headers=headers,
+                            auth_token=self.auth_token
+                        )
+
+                    # Validating results
+                    LOGGER.debug('Validating: Suite "{}"; Test "{}"; Step "{}"'.format(suite.id_, test.id_, step.id_))
+                    self.get_validation_results(response, current, url, headers)
+
+        # Writing output
+        self.write_output()

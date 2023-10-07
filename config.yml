@@ -18,13 +18,12 @@ baseUrl: https://test.app.zettagenomics.com/reference/opencga/webservices/rest/v
 #  method: POST
 #  bodyParams: {"user": "USER", "password": "PASS"}
 
-# DEFAULT REST PARAMETERS
-#rest:
-#  headers:
-#    Accept-Encoding: gzip
-#  queryParams:
-#    limit: 10
-#    count: False
+# DEFAULT PARAMETERS
+#headers:
+#  Accept-Encoding: gzip
+#queryParams:
+#  limit: 10
+#  count: False
 
 # SELECTED SUITES FOR TESTING
 suites:
