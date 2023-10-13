@@ -33,7 +33,11 @@ class ValidationResult:
 
     @staticmethod
     def get_status(validation):
-        status = all([v['result'] for v in validation])
+        validation_results = [v['result'] for v in validation]
+        if validation_results:
+            status = all([v['result'] for v in validation])
+        else:
+            status = False
         return 'PASS' if status is True else 'FAIL'
 
     def validation_bool_to_str(self):

@@ -1,18 +1,18 @@
 # CUSTOM VALIDATOR
-validator: /home/dapregi/dev/argus/opencga_validator.py
+validator: /path/to/opencga_validator.py
 
 # WORKING DIR FOR CUSTOM INPUT/OUTPUT FILES
-workingDir: /home/dapregi/tmp/argus
+workingDir: /path/to/argus_working_dir
 
 # BASE URL
-baseUrl: https://test.app.zettagenomics.com/reference/opencga/webservices/rest/v2
+baseUrl: https://example.com/webservices/rest/v2
 
 # AUTHENTICATION INFO
 #authentication:
 #  # token: ssasasdsadsadasd.sdasd.asdasd
 #  # token: env(OPENCGA_TOKEN)
 #  token: login(responses[0].results[0].token)
-#  url: https://test.app.zettagenomics.com/reference/opencga/webservices/rest/v2/users/login
+#  url: https://example.com/webservices/rest/v2/users/login
 #  headers:
 #    Accept-Encoding: gzip
 #  method: POST
@@ -27,7 +27,7 @@ baseUrl: https://test.app.zettagenomics.com/reference/opencga/webservices/rest/v
 
 # SELECTED SUITES FOR TESTING
 suites:
-  - gene
+  - cohort
 
 # TEST SELECTION
 #tests:

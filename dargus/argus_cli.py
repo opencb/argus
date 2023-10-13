@@ -43,15 +43,15 @@ class ArgusCLI:
                                     help='configuration YML file path')
         execute_parser.add_argument('suite_dir',
                                     help='test folder containing suite YML files')
-        execute_parser.add_argument('-o', '--output_prefix',
+        execute_parser.add_argument('-o', '--output-prefix', dest='output_prefix',
                                     help='output prefix for filenames')
-        execute_parser.add_argument('-d', '--output_dir',
+        execute_parser.add_argument('-d', '--output-dir', dest='output_dir',
                                     help='output file directory')
         execute_parser.add_argument('-v', '--validator',
                                     help='validator file path')
         execute_parser.add_argument('-s', '--suites',
                                     help='suites to run')
-        execute_parser.add_argument('-w', '--working_dir',
+        execute_parser.add_argument('-w', '--working-dir', dest='working_dir',
                                     help='working file directory to access custom input/output files')
 
     def _stats(self):
