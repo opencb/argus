@@ -1,16 +1,26 @@
 import re
-import requests
+import json
+import json2html
+import logging
+
+LOGGER = logging.getLogger('argus_logger')
 
 
 def get_item_from_json(json_dict, field):
-    for item in field.split('.'):
-        items = list(filter(None, re.split(r'[\[\]]', item)))
-        key, indexes = items[0], map(int, items[1:])
-        json_dict = json_dict[key]
-        if indexes:
-            for i in indexes:
-                json_dict = json_dict[i]
-    return json_dict
+    json_traceback = json_dict.copy()
+    try:
+        for item in field.split('.'):
+            items = list(filter(None, re.split(r'[\[\]]', item)))
+            key, indexes = items[0], map(int, items[1:])
+            json_dict = json_dict[key]
+            if indexes:
+                for i in indexes:
+                    json_dict = json_dict[i]
+        return json_dict
+    except IndexError as e:
+        msg = 'Unable to retrieve field "{}" from JSON "{}". Reason: "{}".'
+        LOGGER.error(msg.format(field, json_traceback, e))
+        raise IndexError(e)
 
 
 def dot2python(field):
@@ -57,3 +67,28 @@ def num_compare(a, b, operator):
         return a < b
     elif operator in ['<=', 'le']:
         return a <= b
+
+
+def convert_bool_and_null(item):
+    """Function to recursively convert 'false' to False, 'true' to True, and 'null' to None"""
+    if isinstance(item, list):
+        return [convert_bool_and_null(i) for i in item]
+    elif isinstance(item, dict):
+        return {k: convert_bool_and_null(v) for k, v in item.items()}
+    elif isinstance(item, str):
+        if item.lower() == 'false':
+            return 'False'
+        elif item.lower() == 'true':
+            return 'True'
+        elif item.lower() == 'null':
+            return 'None'
+    return item
+
+
+def json_to_html(json_string):
+    # Convert bool and null values
+    updated_json_string = json.dumps(convert_bool_and_null(json_string), indent=2)
+
+    # Convert JSON to HTML
+    out_html = json2html.json2html.convert(json=updated_json_string)
+    return out_html

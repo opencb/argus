@@ -5,14 +5,14 @@ from dargus.argus_exceptions import ValidationError
 
 
 class Validator:
-    def __init__(self, config, token=None):
+    def __init__(self, config, auth_token=None):
         self._config = config
         self._rest_response = None
         self._rest_response_json = None
         self._current = None
-        self._task = None
+        self._step = None
         self._stored_values = {}
-        self._token = token
+        self._auth_token = auth_token
 
         self.validation = self.get_default_validation()
         if self._config.get('validation') is not None:
@@ -23,10 +23,10 @@ class Validator:
         validation = {
             'timeDeviation': 100,
             'asyncRetryTime': 10,
-            'ignore_time': False,
-            'ignore_headers': [],
-            'ignore_results': [],
-            'fail_on_first': False
+            'ignoreTime': False,
+            'ignoreHeaders': [],
+            'ignoreResults': [],
+            'failOnFirst': False
         }
         return validation
 
@@ -75,7 +75,7 @@ class Validator:
             value = value.replace(v, dot2python(v))
 
         # Internal variables (e.g. "$QUERY_PARAMS")
-        value = value.replace('$QUERY_PARAMS', 'self.task.query_params')
+        value = value.replace('$QUERY_PARAMS', 'self.step.query_params')
 
         value = 'lambda ' + value.replace('->', ':')
         return value
@@ -97,6 +97,13 @@ class Validator:
             return field_value == value
         else:
             return sorted(field_value) == sorted(value)
+
+    def list_intersect(self, field, value, all_intersect=True):
+        field_value = self.get_item(field)
+        intersection = [item for item in list(value) if item in list(field_value)]
+        if intersection == value or ((not all_intersect) and len(intersection) > 0):
+            return True
+        return False
 
     def list_sorted(self, field, reverse=False):
         field_value = self.get_item(field)
@@ -133,8 +140,8 @@ class Validator:
 
             result = eval('self.{}({})'.format(name, args))
 
-            # Raise error if fail_on_first is True
-            if self.validation['fail_on_first'] and not result:
+            # Raise error if failOnFirst is True
+            if self.validation['failOnFirst'] and not result:
                 msg = 'Validation function "{}" returned False'
                 raise ValidationError(msg.format(method))
 
@@ -145,26 +152,26 @@ class Validator:
 
         return results
 
-    def validate_time(self, task_time):
+    def validate_time(self, step_time):
         request_time = self._rest_response.elapsed.total_seconds()
         time_deviation = self.validation['timeDeviation']
-        max_time = task_time + task_time*time_deviation/100
-        min_time = task_time - task_time*time_deviation/100
+        max_time = step_time + time_deviation
+        min_time = min(0, abs(step_time - time_deviation))
         if not min_time < request_time < max_time:
             return False
         return True
 
-    def validate_headers(self, task_headers, exclude=None):
-        for key in task_headers.keys():
+    def validate_headers(self, step_headers, exclude=None):
+        for key in step_headers.keys():
             if key not in exclude and (
                     key not in self._rest_response.headers.keys() or
-                    self._rest_response.headers[key] != task_headers[key]
+                    self._rest_response.headers[key] != step_headers[key]
             ):
                 return False
         return True
 
-    def validate_status_code(self, task_status_code):
-        if not task_status_code == self._rest_response.status_code:
+    def validate_status_code(self, step_status_code):
+        if not step_status_code == self._rest_response.status_code:
             return False
         return True
 
@@ -172,41 +179,48 @@ class Validator:
         self._rest_response = response
         self._rest_response_json = response.json()
         self._current = current
-        self._task = self._current.tests[0].tasks[0]
+        self._step = self._current.tests[0].steps[0]
         results = []
 
         # Time
-        if 'time' in self._task.validation and not self.validation['ignore_time']:
+        if self._step.validation and 'time' in self._step.validation and not self.validation['ignoreTime']:
             results.append(
                 {'function': 'validate_time',
-                 'result': self.validate_time(self._task.validation['time'])}
+                 'result': self.validate_time(self._step.validation['time'])}
             )
 
         # Headers
-        if 'headers' in self._task.validation:
+        if self._step.validation and 'headers' in self._step.validation:
             result_headers = self.validate_headers(
-                self._task.validation['headers'],
-                exclude=self.validation['ignore_headers']
+                self._step.validation['headers'],
+                exclude=self.validation['ignoreHeaders']
             )
             results.append({'function': 'validate_headers',
                             'result': result_headers})
 
         # Status code
-        task_status_code = self._task.validation.get('status_code') \
-            if 'status_code' in self._task.validation else 200
+        step_status_code = 200
+        if self._step.validation and 'status_code' in self._step.validation:
+            step_status_code = self._step.validation.get('status_code')
         results.append(
             {'function': 'validate_status_code',
-             'result': self.validate_status_code(task_status_code)}
+             'result': self.validate_status_code(step_status_code)}
         )
 
         # Results
-        if 'results' in self._task.validation:
+        if self._step.validation and 'results' in self._step.validation:
             results += self._validate_results(
-                self._task.validation['results'],
-                exclude=self.validation['ignore_results']
+                self._step.validation['results'],
+                exclude=self.validation['ignoreResults']
             )
 
         return results
 
-    def validate_async(self, async_jobs):
-        pass
+    def get_async_response_for_validation(self, response, current, url, method, headers, auth_token):
+        return response
+
+    def validate_response(self, response):
+        return True, None
+
+    def validate_async_response(self, response):
+        return True, None

@@ -1,17 +1,16 @@
 id: variant
-baseUrl: https://test.app.zettagenomics.com/reference/opencga/webservices/rest/v5.1/analysis/variant
 tests:
 - id: query
   tags: QUICK
-  path: query
+  path: /analysis/variant/query
   method: GET
   async: false
-  tasks:
-  - id: test_task
+  steps:
+  - id: test_step
     queryParams:
       study: germline:ashkenazim
       limit: 10
-    matrixParams:
+    queryMatrixParams:
       count: [true, false]
     validation:
       results:
@@ -42,7 +41,7 @@ tests:
 #  - id: type
 #    queryParams:
 #      study: germline:ashkenazim
-#    matrixParams:
+#    queryMatrixParams:
 #      type: ["SNV","INDEL","SNP"]
 #    validation:
 #      # seconds

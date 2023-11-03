@@ -1,17 +1,20 @@
 id: gene
-baseUrl: https://ws.zettagenomics.com/cellbase/webservices/rest/v5/hsapiens/feature/gene
+baseUrl: https://ws.zettagenomics.com/cellbase/webservices/rest/v5/hsapiens
 tests:
   - id: info
-    path: /{genes}/info
+    path: /feature/gene/{genes}/info
     method: GET
     async: false
-    tasks:
+    steps:
       - id: positive
         pathParams:
           genes: BRCA2
         queryParams:
           assembly: grch38
-        matrixParams:
+          test: a_${RANDOM(3)}
+          test1: a_${RANDINT(10, 50)}_b
+          test2: ${RANDCHOICE(A, B)}_b
+        queryMatrixParams:
           source:
             - ensembl
             - refseq

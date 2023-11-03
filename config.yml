@@ -1,32 +1,33 @@
 # CUSTOM VALIDATOR
-validator: /home/dapregi/dev/argus/opencga_validator.py
+validator: /path/to/opencga_validator.py
+
+# WORKING DIR FOR CUSTOM INPUT/OUTPUT FILES
+workingDir: /path/to/argus_working_dir
 
 # BASE URL
-baseUrl: https://test.app.zettagenomics.com/xeta-14s/opencga/webservices/rest/v2
+baseUrl: https://example.com/webservices/rest/v2
 
 # AUTHENTICATION INFO
 #authentication:
-##  ##  token: ssasasdsadsadasd.sdasd.asdasd
-##  ##  token: env(OPENCGA_TOKEN)
+#  # token: ssasasdsadsadasd.sdasd.asdasd
+#  # token: env(OPENCGA_TOKEN)
 #  token: login(responses[0].results[0].token)
-#  url: https://test.app.zettagenomics.com/xeta-14s/opencga/webservices/rest/v2/users/login
+#  url: https://example.com/webservices/rest/v2/users/login
 #  headers:
 #    Accept-Encoding: gzip
 #  method: POST
-#  body: {"user": "USER", "password": "PASS"}
+#  bodyParams: {"user": "USER", "password": "PASS"}
 
-# DEFAULT REST PARAMETERS
-#rest:
-#  headers:
-#    Accept-Encoding: gzip
-#  queryParams:
-#    limit: 10
-#    count: False
+# DEFAULT PARAMETERS
+#headers:
+#  Accept-Encoding: gzip
+#queryParams:
+#  limit: 10
+#  count: False
 
 # SELECTED SUITES FOR TESTING
 suites:
-  - gene
-  - analysis_clinical
+  - cohort
 
 # TEST SELECTION
 #tests:
@@ -37,11 +38,11 @@ suites:
 # VALIDATION PARAMETERS
 validation:
 
-  timeDeviation: 100  # % of time allowed to deviate from expected time (0-100)
+  timeDeviation: 5  # +/- seconds allowed to deviate from expected time
   asyncRetryTime: 10  # retry time for checking asynchronous jobs
 
-  ignore_time: false
-  ignore_headers: []      ## example:  ["Content-Type"]
-  ignore_results: []
+  ignoreTime: false  # ignore validation of response time
+  ignoreHeaders: []  # ignore validation of header parameters (e.g. ["Content-Type"])
+  ignoreResults: []  # ignore validation of particular methods (e.g. ["match", "list_contains"])
 
-  fail_on_first: False
+  failOnFirst: False  # stop validation in first FAIL
