@@ -1,5 +1,5 @@
 from datetime import datetime
-from utils import json_to_html
+from dargus.utils import json_to_html
 
 
 class ValidationResult:
