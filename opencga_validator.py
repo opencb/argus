@@ -22,7 +22,7 @@ class OpencgaValidator(Validator):
         if 'events' in response_json and response_json['events']:
             events = response_json['events']
         if 'events' in response_json['responses'][0] and response_json['responses'][0]['events']:
-            events = response_json['events']
+            events = response_json['responses'][0]['events']
         if events:
             for event in events:
                 if event['type'] == 'ERROR':
