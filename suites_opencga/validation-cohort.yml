@@ -87,7 +87,7 @@ tests:
     method: POST
     async: true
     steps:
-      - id: variant_stats_index
+      - id: variant_stats_delete
         queryParams:
           study: 1000G
         bodyParams:
@@ -101,7 +101,7 @@ tests:
     method: DELETE
     async: false
     steps:
-      - id: variant_stats_index
+      - id: cohorts_delete
         pathParams:
           cohorts: <cohort_del>
         queryParams:
