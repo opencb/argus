@@ -95,7 +95,7 @@ def main():
         args.config,
         validator=args.validator,
         suites=args.suites,
-        working_dir=args.working_dir
+        working_dir=args.workingDir
     ).get_config()
 
     client_generator = Argus(args.suite_dir, argus_config, args.output_prefix, args.output_dir)
