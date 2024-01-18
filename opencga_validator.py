@@ -1,7 +1,10 @@
+import os
 import re
 import requests
 import time
 import logging
+import gzip
+import subprocess
 
 from dargus.validator import Validator
 from dargus.utils import num_compare
@@ -15,8 +18,13 @@ class OpencgaValidator(Validator):
 
     def validate_response(self, response):
         response_json = response.json()
+        events = []
+        if 'events' in response_json and response_json['events']:
+            events = response_json['events']
         if 'events' in response_json['responses'][0] and response_json['responses'][0]['events']:
-            for event in response_json['responses'][0]['events']:
+            events = response_json['events']
+        if events:
+            for event in events:
                 if event['type'] == 'ERROR':
                     LOGGER.error('Event: "{}"'.format(event))
                     return False, event
@@ -97,4 +105,59 @@ class OpencgaValidator(Validator):
                                 headers={"Authorization": 'Bearer {}'.format(self._auth_token)})
         self._stored_values[variable_name] = response.json()
 
+        return True
+
+    def validate_allele_freqs(self, variants, r_squared):
+        # Getting cohort variant allele frequencies from opencga
+        variant_id_list = []
+        opencga_cohort_freqs = {}
+        for variant_data in self.get_item(variants):
+            variant_id = 'chr{}:{}:{}:{}'.format(variant_data['chromosome'], variant_data['start'],
+                                                 variant_data['reference'], variant_data['alternate'])
+            variant_id_list.append(variant_id)
+            opencga_cohort_freqs[variant_id] = {cohort_data['cohortId']: cohort_data['altAlleleFreq']
+                                                for cohort_data in variant_data['studies'][0]['stats']
+                                                if cohort_data['cohortId'] in ['EUR', 'EAS', 'AMR', 'SAS', 'AFR']}
+
+        # Getting cohort variant allele frequencies from reference VCF
+        reference_vcf_fpath = os.path.join(
+            self._config['workingDir'], 'validation-cohort',
+            '20201028_CCDG_14151_B01_GRM_WGS_2020-08-05_chr22.recalibrated_variants.subset_1000.vcf.gz'
+        )
+        reference_vcf_cohort_freqs = {}
+        for line in gzip.open(reference_vcf_fpath, 'r'):
+            line = line.decode()
+            if line.startswith('#'):  # Skip VCF header
+                continue
+            line_items = line.split()
+            if ',' in line_items[3] or ',' in line_items[4]:  # Skip multiallelic variants
+                continue
+            variant_id = '{}:{}:{}:{}'.format(line_items[0], line_items[1], line_items[3], line_items[4])
+            reference_vcf_cohort_freqs[variant_id] = {
+                key_value.split('=')[0][3:]: float(key_value.split('=')[1])
+                for key_value in line.split()[7].split(';')
+                if '=' in key_value and key_value.split('=')[0] in ['AF_EUR', 'AF_EAS', 'AF_AMR', 'AF_SAS', 'AF_AFR']
+            }
+
+        # Writing allele frequencies
+        out_fhand = open(os.path.join(self._config['workingDir'], 'validation-cohort', 'out', 'out.tsv'), 'w')
+        out_fhand.write('\t'.join(['id', 'cohort', 'opencga', 'reference']) + '\n')
+        for id_ in variant_id_list:
+            if id_ in opencga_cohort_freqs and id_ in reference_vcf_cohort_freqs:
+                for cohort in ['EUR', 'EAS', 'AMR', 'SAS', 'AFR']:
+                    line = '\t'.join(map(str, [id_, cohort, opencga_cohort_freqs[id_][cohort],
+                                               reference_vcf_cohort_freqs[id_][cohort]]))
+                    out_fhand.write(line + '\n')
+        out_fhand.close()
+
+        # Plotting regression line with Rscript
+        cmd = ["/usr/bin/Rscript",
+               "--vanilla",
+               os.path.join(self._config['workingDir'], 'validation-cohort', 'allele_freqs.R'),
+               os.path.join(self._config['workingDir'], 'validation-cohort', 'out', 'out.tsv'),
+               os.path.join(self._config['workingDir'], 'validation-cohort', 'out')]
+        result = subprocess.run(cmd, capture_output=True)
+
+        if float(result.stdout.split()[1]) < float(r_squared):
+            return False
         return True

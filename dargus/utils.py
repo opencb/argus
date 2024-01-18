@@ -1,7 +1,10 @@
+import os
 import re
 import json
 import json2html
 import logging
+from importlib.metadata import version
+
 
 LOGGER = logging.getLogger('argus_logger')
 
@@ -92,3 +95,13 @@ def json_to_html(json_string):
     # Convert JSON to HTML
     out_html = json2html.json2html.convert(json=updated_json_string)
     return out_html
+
+
+def get_argus_version():
+    parent_folder = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+    if 'pyproject.toml' in [f for f in os.listdir(parent_folder)]:
+        for line in open(os.path.join(parent_folder, 'pyproject.toml'), 'r'):
+            if line.startswith('version'):
+                return line.split('=')[1].replace('"', '').strip()
+    else:
+        return version('dargus')

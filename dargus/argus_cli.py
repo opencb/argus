@@ -6,6 +6,7 @@ import logging
 
 from dargus.argus import Argus
 from dargus.argus_config import ArgusConfiguration
+from dargus.utils import get_argus_version
 
 
 class ArgusCLI:
@@ -51,7 +52,7 @@ class ArgusCLI:
                                     help='validator file path')
         execute_parser.add_argument('-s', '--suites',
                                     help='suites to run')
-        execute_parser.add_argument('-w', '--working-dir', dest='working_dir',
+        execute_parser.add_argument('-w', '--working-dir', dest='workingDir',
                                     help='working file directory to access custom input/output files')
 
     def _stats(self):
@@ -88,6 +89,7 @@ def main():
 
     # Setting up logger
     logger = create_logger(args.loglevel)
+    logger.debug('Argus version: {}'.format(get_argus_version()))
 
     argus_config = ArgusConfiguration(
         args.config,
