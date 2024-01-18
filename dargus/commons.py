@@ -20,6 +20,8 @@ def query(url, method='GET', headers=None, body=None):
         response = requests.get(url, headers=headers)
     elif method.lower() == 'post':
         response = requests.post(url, json=body, headers=headers)
+    elif method.lower() == 'delete':
+        response = requests.delete(url, json=body, headers=headers)
     else:
         msg = 'Method "' + method + '" not implemented.'
         raise NotImplementedError(msg)
