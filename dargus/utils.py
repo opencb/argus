@@ -3,6 +3,8 @@ import re
 import json
 import json2html
 import logging
+import random
+import string
 from importlib.metadata import version
 
 
@@ -105,3 +107,45 @@ def get_argus_version():
                 return line.split('=')[1].replace('"', '').strip()
     else:
         return version('dargus')
+
+
+def replace_random_vars(lines):
+    new_lines = []
+    for line in lines:
+        findings = re.findall('.*?(\${(.*?\((.*?)\))}).*?', line)
+        if not findings:
+            new_lines.append(line)
+        else:
+            for finding in findings:
+                template, func, args = finding
+                if func.startswith('RANDOM'):
+                    n = int(args) if args else 6
+                    random_value = ''.join(random.choices(string.ascii_uppercase + string.digits, k=n))
+                    line = line.replace(template, random_value, 1)
+                elif func.startswith('RANDINT'):
+                    a, b = map(int, re.sub(re.compile(r'\s+'), '', args).split(','))
+                    random_value = str(random.randint(a, b))
+                    line = line.replace(template, random_value, 1)
+                elif func.startswith('RANDCHOICE'):
+                    choices = re.sub(re.compile(r'\s+'), '', args).split(',')
+                    random_value = random.choice(choices)
+                    line = line.replace(template, random_value, 1)
+                else:
+                    raise ValueError('Random variable function "{}" not supported'.format(template))
+            new_lines.append(line)
+    return new_lines
+
+
+def replace_variables(item, variables):
+    if item is None or isinstance(item, bool):
+        return item
+    if isinstance(item, list):
+        for i, list_item in enumerate(item):
+            item[i] = replace_variables(list_item, variables)
+    elif isinstance(item, dict):
+        for k in item:
+            item[k] = replace_variables(item[k], variables)
+    else:
+        if item[1:-1] in variables:
+            item = variables[item[1:-1]]
+    return item

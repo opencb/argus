@@ -1,6 +1,8 @@
 class Test:
-    def __init__(self, id_, tags=None, path=None, method=None, headers=None, async_=None, steps=None):
+    def __init__(self, id_, test_variables=None, tags=None, path=None, method=None, headers=None, async_=None,
+                 steps=None):
         self.id_ = id_
+        self.test_variables = test_variables
         self.tags = tags
         self.path = path
         self.method = method

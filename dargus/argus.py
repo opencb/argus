@@ -1,7 +1,5 @@
 import os
 import logging
-import random
-import string
 import importlib.util
 
 import yaml
@@ -15,7 +13,7 @@ from dargus.test import Test
 from dargus.step import Step
 from dargus.validator import Validator
 from dargus.validation_result import ValidationResult
-from dargus.utils import get_item_from_json, create_url
+from dargus.utils import get_item_from_json, create_url, replace_random_vars, replace_variables
 from dargus.commons import query
 
 
@@ -100,13 +98,17 @@ class Argus:
         for fpath in fpaths:
             LOGGER.debug('Parsing file "{}"'.format(fpath))
             with open(fpath, 'r') as fhand:
+                # Replacing RANDOM template functions
+                replace_random_vars(fhand.readlines())
+                fhand.seek(0)
+                # Loading YAML
                 try:
-                    suite = yaml.safe_load(fhand)
+                    yaml_content = yaml.safe_load(fhand)
                 except yaml.parser.ParserError as e:
                     msg = 'Skipping file "{}". Unable to parse YML file. {}.'
                     LOGGER.error(msg.format(fpath, ' '.join(str(e).replace('\n', ' ').split()).capitalize()))
                     continue
-            suite = self._parse_suite(suite)
+            suite = self._parse_suite(yaml_content)
             if suite is not None:
                 self.suites.append(suite)
 
@@ -129,13 +131,15 @@ class Argus:
             suite['baseUrl'] = self.config['baseUrl']
         base_url = suite.get('baseUrl')
 
-        tests = list(filter(None, [self._parse_test(test) for test in suite.get('tests')]))
+        suite_variables = suite.get('suiteVariables') or {}
 
-        suite = Suite(id_=id_, base_url=base_url, tests=tests)
+        tests = list(filter(None, [self._parse_test(test, suite_variables) for test in suite.get('tests')]))
+
+        suite = Suite(id_=id_, base_url=base_url, suite_variables=suite_variables, tests=tests)
 
         return suite
 
-    def _parse_test(self, test):
+    def _parse_test(self, test, suite_variables):
         # Getting test ID
         id_ = test.get('id')
         if id_ is None:
@@ -144,6 +148,7 @@ class Argus:
             raise ValueError('Duplicated test ID "{}"'.format(id_))
         self.test_ids.append(id_)
 
+        test_variables = test.get('testVariables') or {}
         tags = test.get('tags').split(',') if test.get('tags') else None
         path = test.get('path')
         method = test.get('method')
@@ -173,9 +178,10 @@ class Argus:
 
         steps = []
         for step in test.get('steps'):
-            steps += list(filter(None, self._parse_step(step)))
+            steps += list(filter(None, self._parse_step(step, suite_variables, test_variables)))
 
-        test = Test(id_=id_, tags=tags, path=path, method=method, headers=headers, async_=async_, steps=steps)
+        test = Test(id_=id_, test_variables=test_variables, tags=tags, path=path, method=method, headers=headers,
+                    async_=async_, steps=steps)
         return test
 
     @staticmethod
@@ -230,27 +236,7 @@ class Argus:
 
         return body_params_list
 
-    @staticmethod
-    def replace_template_vars(params):
-        if params:
-            for param in params:
-                if isinstance(params[param], str) and '${' in params[param]:
-                    template, func, args = re.findall('.*(\${(.*\((.*)\))}).*', params[param])[0]
-                    if func.startswith('RANDOM'):
-                        n = int(args) if args else 6
-                        random_value = ''.join(random.choices(string.ascii_uppercase + string.digits, k=n))
-                    elif func.startswith('RANDINT'):
-                        a, b = map(int, re.sub(re.compile(r'\s+'), '', args).split(','))
-                        random_value = str(random.randint(a, b))
-                    elif func.startswith('RANDCHOICE'):
-                        choices = re.sub(re.compile(r'\s+'), '', args).split(',')
-                        random_value = random.choice(choices)
-                    else:
-                        raise ValueError('Template function "{}" not supported'.format(template))
-                    params[param] = params[param].replace(template, random_value)
-        return params
-
-    def _parse_step(self, step):
+    def _parse_step(self, step, suite_variables, test_variables):
         # Getting step ID
         id_ = step.get('id')
         if id_ is None:
@@ -259,6 +245,7 @@ class Argus:
             raise ValueError('Duplicated step ID "{}"'.format(id_))
         self.step_ids.append(id_)
 
+        step_variables = step.get('stepVariables') or {}
         path_params = step.get('pathParams')
         query_params = step.get('queryParams')
         query_matrix_params = step.get('queryMatrixParams')
@@ -285,10 +272,18 @@ class Argus:
         # Parsing body params
         body_params_list = self._parse_body(id_, body_params, body_matrix_params, body_file)
 
-        # Replace template variables
-        path_params = self.replace_template_vars(path_params)
-        query_params_list = [self.replace_template_vars(params) if params else None for params in query_params_list]
-        body_params_list = [self.replace_template_vars(params) if params else None for params in body_params_list]
+        # Replace variables
+        variables = suite_variables.copy()
+        variables.update(test_variables)
+        variables.update(step_variables)
+        if variables:
+            path_params = replace_variables(path_params, variables)
+            query_params_list = replace_variables(query_params_list, variables)
+            body_params_list = replace_variables(body_params_list, variables)
+            validation_functions = validation.get('results') or {}
+            for i, function in enumerate(validation_functions):
+                for var in variables:
+                    validation_functions[i] = function.replace('<{}>'.format(var), variables[var])
 
         # Cartesian product between query and body params
         step_params = [i for i in product(query_params_list, body_params_list)]
@@ -300,8 +295,8 @@ class Argus:
 
         # Creating steps
         steps = [
-            Step(id_=id_, path_params=path_params, query_params=step_params[i][0], body_params=step_params[i][1],
-                 validation=validation)
+            Step(id_=id_, step_variables=step_variables, path_params=path_params, query_params=step_params[i][0],
+                 body_params=step_params[i][1], validation=validation)
             for i, id_ in enumerate(id_list)
         ]
 
