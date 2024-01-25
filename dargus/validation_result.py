@@ -34,25 +34,27 @@ class ValidationResult:
 
     @staticmethod
     def get_status(validation):
-        validation_results = [v['result'] for v in validation]
-        if validation_results:
-            status = all([v['result'] for v in validation])
-        else:
-            status = False
-        return 'PASS' if status is True else 'FAIL'
+        if validation:
+            validation_results = [v['result'] for v in validation]
+            if validation_results:
+                status = all([v['result'] for v in validation])
+            else:
+                status = False
+            return 'PASS' if status is True else 'FAIL'
 
     def format_validation(self):
-        for v in self.validation:
-            # Converting boolean values
-            v['result'] = 'PASS' if v['result'] else 'FAIL'
+        if self.validation:
+            for v in self.validation:
+                # Converting boolean values
+                v['result'] = 'PASS' if v['result'] else 'FAIL'
 
-            # Splitting function name and params
-            validation_function_parts = re.search(r'^(.+?)\((.*)\)$', v['function'])
-            if validation_function_parts:
-                v['function'] = validation_function_parts.group(1)
-                v['params'] = validation_function_parts.group(2)
-            else:
-                v['params'] = None
+                # Splitting function name and params
+                validation_function_parts = re.search(r'^(.+?)\((.*)\)$', v['function'])
+                if validation_function_parts:
+                    v['function'] = validation_function_parts.group(1)
+                    v['params'] = validation_function_parts.group(2)
+                else:
+                    v['params'] = None
 
     def to_json(self):
         return self.__dict__

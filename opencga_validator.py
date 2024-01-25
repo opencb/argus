@@ -7,16 +7,45 @@ import gzip
 import subprocess
 
 from dargus.validator import Validator
-from dargus.utils import num_compare
+from dargus.utils import create_url, query, get_item_from_json, num_compare
 
 LOGGER = logging.getLogger('argus_logger')
 
 
 class OpencgaValidator(Validator):
-    def __init__(self, config, auth_token):
-        super().__init__(config=config, auth_token=auth_token)
+    def __init__(self, config):
+        super().__init__(config=config)
+
+    def login(self):
+        # Getting authorisation token from config
+        auth_token = None
+        if 'authentication' in self._config and self._config['authentication'] is not None:
+            auth_info = self._config['authentication']
+            token_func = re.findall(r'^(.+)\((.+)\)$', auth_info['token'])
+            if token_func:
+                if token_func[0][0] == 'env':
+                    auth_token = os.environ[token_func[1]]
+                elif token_func[0][0] == 'login':
+                    url = create_url(url=auth_info['url'],
+                                     path_params=auth_info.get('pathParams'),
+                                     query_params=auth_info.get('queryParams'))
+                    LOGGER.debug('Logging in: {} {} {}'.format(auth_info.get('method'), url, auth_info.get('bodyParams')))
+                    response = query(url,
+                                     method=auth_info.get('method'),
+                                     headers=auth_info.get('headers'),
+                                     body=auth_info.get('bodyParams'))
+                    auth_token = get_item_from_json(response.json(), token_func[0][1])
+            else:
+                auth_token = auth_info.get('token')
+
+        # Adding authorisation token to headers
+        if auth_token:
+            headers = self._config.setdefault('headers', {})
+            headers.update({'Authorization': 'Bearer {}'.format(auth_token)})
 
     def validate_response(self, response):
+        if response is None:
+            return False, None
         response_json = response.json()
         events = []
         if 'events' in response_json and response_json['events']:
@@ -31,6 +60,8 @@ class OpencgaValidator(Validator):
         return True, None
 
     def validate_async_response(self, async_response):
+        if async_response is None:
+            return False, None
         async_response_json = async_response.json()
         async_response_json = async_response_json['responses'][0]['results'][0]
         if async_response_json['internal']['status']['id'] in ['ABORTED', 'ERROR']:
@@ -54,7 +85,7 @@ class OpencgaValidator(Validator):
             return False
         return True
 
-    def get_async_response_for_validation(self, response, current, url, method, headers, auth_token):
+    def get_async_response_for_validation(self, response, current):
         res_json = response.json()
 
         # Waiting for job to end so it can be validated
@@ -64,7 +95,7 @@ class OpencgaValidator(Validator):
                 study_id=res_json['responses'][0]['results'][0]['study']['id'],
                 job_id=res_json['responses'][0]['results'][0]['id'],
                 base_url=current.base_url,
-                headers=headers
+                headers=current.tests[0].headers
             )
             job_res_json = job_response.json()
 
@@ -72,6 +103,7 @@ class OpencgaValidator(Validator):
             if self.check_job_status(job_res_json):
                 break
             time.sleep(self.validation['asyncRetryTime'])
+            self.login()
         return job_response
 
     def file_exists(self, files, fname_list):
@@ -101,8 +133,7 @@ class OpencgaValidator(Validator):
             base_url = self._current.base_url
 
         # Querying the endpoint and storing the response internally
-        response = requests.get(base_url + path,
-                                headers={"Authorization": 'Bearer {}'.format(self._auth_token)})
+        response = requests.get(url=base_url + path, headers=self._current.tests[0].headers)
         self._stored_values[variable_name] = response.json()
 
         return True
