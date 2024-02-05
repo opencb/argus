@@ -53,7 +53,6 @@ class Argus:
         self.validation_results = []
 
         self._generate_token()
-        self._parse_files(self.suite_dir)
 
         # Loading validator
         if 'validator' in self.config and self.config['validator'] is not None:
@@ -69,6 +68,9 @@ class Argus:
             self.validator = validator_class(config=self.config, auth_token=self.auth_token)
         else:
             self.validator = Validator(config=self.config, auth_token=self.auth_token)
+
+        # Parsing validation files
+        self._parse_files(self.suite_dir)  # files must be parsed after validator logs in
 
     @staticmethod
     def _login(auth, field):
@@ -254,6 +256,12 @@ class Argus:
         body_file = step.get('bodyFile')
         validation = step.get('validation')
 
+        # Get variables
+        variables = self.config['variables'].copy()
+        variables.update(suite_variables)
+        variables.update(test_variables)
+        variables.update(step_variables)
+
         # Parsing matrix params
         if query_matrix_params is not None:
             query_matrix_params_list = self._parse_matrix_params(query_matrix_params)
@@ -270,21 +278,16 @@ class Argus:
                         query_params[key] = default_params[key]
 
         # Parsing body params
+        if variables:
+            body_file = replace_variables(body_file, variables)
         body_params_list = self._parse_body(id_, body_params, body_matrix_params, body_file)
 
-        # Replace variables
-        variables = suite_variables.copy()
-        variables.update(test_variables)
-        variables.update(step_variables)
+        # Replacing variables
         if variables:
             path_params = replace_variables(path_params, variables)
             query_params_list = replace_variables(query_params_list, variables)
             body_params_list = replace_variables(body_params_list, variables)
-            validation_functions = validation.get('results') or {}
-            for i, function in enumerate(validation_functions):
-                for var in variables:
-                    # Format: to include a brace character in the literal text, it can be escaped by doubling: {{ and }}
-                    validation_functions[i] = function.replace('${{{var}}}'.format(var=var), variables[var])
+            validation = replace_variables(validation, variables)
 
         # Cartesian product between query and body params
         step_params = [i for i in product(query_params_list, body_params_list)]

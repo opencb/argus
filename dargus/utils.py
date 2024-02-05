@@ -146,6 +146,7 @@ def replace_variables(item, variables):
         for k in item:
             item[k] = replace_variables(item[k], variables)
     else:
-        if item.lstrip('${').rstrip('}') in variables:
-            item = variables[item.lstrip('${').rstrip('}')]
+        for variable in variables:
+            # Format: to include a brace character in the literal text, it can be escaped by doubling: {{ and }}
+            item = item.replace('${{{var}}}'.format(var=variable), variables[variable])
     return item

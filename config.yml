@@ -7,6 +7,10 @@ workingDir: /path/to/argus_working_dir
 # BASE URL
 baseUrl: https://example.com/webservices/rest/v2
 
+# GLOBAL VARIABLES
+variables:
+  varName: varValue
+
 # AUTHENTICATION INFO
 #authentication:
 #  # token: ssasasdsadsadasd.sdasd.asdasd
@@ -39,7 +43,7 @@ suites:
 validation:
 
   timeDeviation: 5  # +/- seconds allowed to deviate from expected time
-  asyncRetryTime: 10  # retry time for checking asynchronous jobs
+  asyncRetryTime: 60  # retry time for checking asynchronous jobs
 
   ignoreTime: false  # ignore validation of response time
   ignoreHeaders: []  # ignore validation of header parameters (e.g. ["Content-Type"])

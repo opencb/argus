@@ -34,6 +34,11 @@ class ArgusConfiguration(object):
         if working_dir is not None:
             self._config['workingDir'] = os.path.realpath(os.path.expanduser(working_dir))
 
+        # Add workingDir to global variables
+        self._config.setdefault('variables', {})
+        if 'workingDir' in self._config and self._config['workingDir'] is not None:
+            self._config['variables']['workingDir'] = self._config['workingDir']
+
     @staticmethod
     def _get_dictionary_from_file(config_fpath):
         LOGGER.debug('Loading configuration from: "{}"'.format(config_fpath))
