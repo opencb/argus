@@ -45,8 +45,11 @@ class OpencgaValidator(Validator):
 
     def validate_response(self, response):
         if response is None:
-            return False, None
-        response_json = response.json()
+            return False, 'The webservice returned an empty response'
+        try:
+            response_json = response.json()
+        except requests.exceptions.JSONDecodeError:
+            return False, 'The webservice is not responding with a proper JSON'
         events = []
         if 'events' in response_json and response_json['events']:
             events = response_json['events']
@@ -61,8 +64,11 @@ class OpencgaValidator(Validator):
 
     def validate_async_response(self, async_response):
         if async_response is None:
-            return False, None
-        async_response_json = async_response.json()
+            return False, 'The webservice returned an empty response'
+        try:
+            async_response_json = async_response.json()
+        except requests.exceptions.JSONDecodeError:
+            return False, 'The webservice is not responding with a proper JSON'
         async_response_json = async_response_json['responses'][0]['results'][0]
         if async_response_json['internal']['status']['id'] in ['ABORTED', 'ERROR']:
             event = async_response_json['execution']['events'][0]['message']
