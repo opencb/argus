@@ -224,3 +224,9 @@ class Validator:
 
     def validate_async_response(self, response):
         return True, None
+
+    def run_after_validation(self, response, current):
+        pass
+
+    def run_after_async_validation(self, response, current):
+        pass

@@ -309,10 +309,12 @@ class Argus:
             response_is_valid, events = self.validator.validate_response(response)
             if response_is_valid:
                 validation = self.validator.validate(response, current)
+            self.validator.run_after_validation(response, current)
         else:  # Asynchronous queries
             response_is_valid, events = self.validator.validate_async_response(response)
             if response_is_valid:
                 validation = self.validator.validate(response, current)
+            self.validator.run_after_async_validation(response, current)
 
         # Creating validation result
         vr = ValidationResult(current=current,
