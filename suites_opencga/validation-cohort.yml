@@ -57,8 +57,8 @@ tests:
           study: 1000G
           includeResult: true
         bodyParams:
-          id: <cohort_del>
-          name: <cohort_del>
+          id: ${cohort_del}
+          name: ${cohort_del}
           description: Cohort of 3 samples to test cohort deletion
           samples:
             - id: NA18486
@@ -66,7 +66,7 @@ tests:
             - id: NA18488
         validation:
           results:
-            - match('responses[0].results[0].id', '<cohort_del>')
+            - match('responses[0].results[0].id', '${cohort_del}')
             - list_length('responses[0].results[0].samples', '3')
   - id: variant_stats_index
     path: /operation/variant/stats/index
@@ -103,12 +103,12 @@ tests:
     steps:
       - id: cohorts_delete
         pathParams:
-          cohorts: <cohort_del>
+          cohorts: ${cohort_del}
         queryParams:
           study: 1000G
         validation:
           results:
-            - opencga_query('/cohorts/search?study=validation@population:1000G&id=<cohort_del>&include=id', 'cohort_list')
+            - opencga_query('/cohorts/search?study=validation@population:1000G&id=${cohort_del}&include=id', 'cohort_list')
             - list_length('<cohort_list>.responses[0].results', '0')
   - id: compare_allele_freqs
     path: /analysis/variant/query

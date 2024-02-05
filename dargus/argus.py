@@ -283,7 +283,8 @@ class Argus:
             validation_functions = validation.get('results') or {}
             for i, function in enumerate(validation_functions):
                 for var in variables:
-                    validation_functions[i] = function.replace('<{}>'.format(var), variables[var])
+                    # Format: to include a brace character in the literal text, it can be escaped by doubling: {{ and }}
+                    validation_functions[i] = function.replace('${{{var}}}'.format(var=var), variables[var])
 
         # Cartesian product between query and body params
         step_params = [i for i in product(query_params_list, body_params_list)]

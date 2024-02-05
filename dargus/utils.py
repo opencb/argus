@@ -146,6 +146,6 @@ def replace_variables(item, variables):
         for k in item:
             item[k] = replace_variables(item[k], variables)
     else:
-        if item[1:-1] in variables:
-            item = variables[item[1:-1]]
+        if item.lstrip('${').rstrip('}') in variables:
+            item = variables[item.lstrip('${').rstrip('}')]
     return item
