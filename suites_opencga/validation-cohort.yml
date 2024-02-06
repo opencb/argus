@@ -1,5 +1,5 @@
 id: cohort
-suiteVariables:
+variables:
   cohort_del: DEL
 tests:
   - id: cohorts_create
@@ -11,7 +11,7 @@ tests:
         queryParams:
           study: 1000G
           includeResult: true
-        bodyFile: ${workingDir}/validation-cohort/EAS.json
+        bodyFile: ${INPUT_DIR}/validation-cohort/EAS.json
         validation:
           results:
             - match('responses[0].results[0].id', 'EAS')
@@ -20,7 +20,7 @@ tests:
         queryParams:
           study: 1000G
           includeResult: true
-        bodyFile: ${workingDir}/validation-cohort/EUR.json
+        bodyFile: ${INPUT_DIR}/validation-cohort/EUR.json
         validation:
           results:
             - match('responses[0].results[0].id', 'EUR')
@@ -29,7 +29,7 @@ tests:
         queryParams:
           study: 1000G
           includeResult: true
-        bodyFile: ${workingDir}/validation-cohort/AFR.json
+        bodyFile: ${INPUT_DIR}/validation-cohort/AFR.json
         validation:
           results:
             - match('responses[0].results[0].id', 'AFR')
@@ -38,7 +38,7 @@ tests:
         queryParams:
           study: 1000G
           includeResult: true
-        bodyFile: ${workingDir}/validation-cohort/AMR.json
+        bodyFile: ${INPUT_DIR}/validation-cohort/AMR.json
         validation:
           results:
             - match('responses[0].results[0].id', 'AMR')
@@ -47,7 +47,7 @@ tests:
         queryParams:
           study: 1000G
           includeResult: true
-        bodyFile: ${workingDir}/validation-cohort/SAS.json
+        bodyFile: ${INPUT_DIR}/validation-cohort/SAS.json
         validation:
           results:
             - match('responses[0].results[0].id', 'SAS')

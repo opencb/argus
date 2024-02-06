@@ -133,7 +133,7 @@ class Argus:
             suite['baseUrl'] = self.config['baseUrl']
         base_url = suite.get('baseUrl')
 
-        suite_variables = suite.get('suiteVariables') or {}
+        suite_variables = suite.get('variables') or {}
 
         tests = list(filter(None, [self._parse_test(test, suite_variables) for test in suite.get('tests')]))
 
@@ -150,7 +150,7 @@ class Argus:
             raise ValueError('Duplicated test ID "{}"'.format(id_))
         self.test_ids.append(id_)
 
-        test_variables = test.get('testVariables') or {}
+        test_variables = test.get('variables') or {}
         tags = test.get('tags').split(',') if test.get('tags') else None
         path = test.get('path')
         method = test.get('method')
@@ -247,7 +247,7 @@ class Argus:
             raise ValueError('Duplicated step ID "{}"'.format(id_))
         self.step_ids.append(id_)
 
-        step_variables = step.get('stepVariables') or {}
+        step_variables = step.get('variables') or {}
         path_params = step.get('pathParams')
         query_params = step.get('queryParams')
         query_matrix_params = step.get('queryMatrixParams')

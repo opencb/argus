@@ -37,7 +37,9 @@ class ArgusConfiguration(object):
         # Add workingDir to global variables
         self._config.setdefault('variables', {})
         if 'workingDir' in self._config and self._config['workingDir'] is not None:
-            self._config['variables']['workingDir'] = self._config['workingDir']
+            self._config['variables']['WORKING_DIR'] = self._config['workingDir']
+            self._config['variables']['INPUT_DIR'] = os.path.join(self._config['workingDir'], 'input-data')
+            self._config['variables']['OUTPUT_DIR'] = os.path.join(self._config['workingDir'], 'output-data')
 
     @staticmethod
     def _get_dictionary_from_file(config_fpath):
