@@ -137,7 +137,7 @@ class Argus:
 
         tests = list(filter(None, [self._parse_test(test, suite_variables) for test in suite.get('tests')]))
 
-        suite = Suite(id_=id_, base_url=base_url, suite_variables=suite_variables, tests=tests)
+        suite = Suite(id_=id_, base_url=base_url, variables=suite_variables, tests=tests)
 
         return suite
 
@@ -182,7 +182,7 @@ class Argus:
         for step in test.get('steps'):
             steps += list(filter(None, self._parse_step(step, suite_variables, test_variables)))
 
-        test = Test(id_=id_, test_variables=test_variables, tags=tags, path=path, method=method, headers=headers,
+        test = Test(id_=id_, variables=test_variables, tags=tags, path=path, method=method, headers=headers,
                     async_=async_, steps=steps)
         return test
 
@@ -299,7 +299,7 @@ class Argus:
 
         # Creating steps
         steps = [
-            Step(id_=id_, step_variables=step_variables, path_params=path_params, query_params=step_params[i][0],
+            Step(id_=id_, variables=step_variables, path_params=path_params, query_params=step_params[i][0],
                  body_params=step_params[i][1], validation=validation)
             for i, id_ in enumerate(id_list)
         ]
