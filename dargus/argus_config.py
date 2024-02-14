@@ -8,11 +8,13 @@ LOGGER = logging.getLogger('argus_logger')
 
 
 class ArgusConfiguration(object):
-    def __init__(self, config_input, validator=None, suite_dir=None, suites=None, input_dir=None, output_dir=None):
+    def __init__(self, config_input, validator=None, suite_dir=None, suites=None, tags=None, input_dir=None,
+                 output_dir=None):
         self._config = {
             'validator': None,
             'suiteDir': None,
             'suites': None,
+            'tags': None,
             'inputDir': None,
             'outputDir': None,
             'variables': {
@@ -21,12 +23,12 @@ class ArgusConfiguration(object):
             }
         }
 
-        self._load_config(config_input, validator, suite_dir, suites, input_dir, output_dir)
+        self._load_config(config_input, validator, suite_dir, suites, tags, input_dir, output_dir)
         LOGGER.debug('Configuration: {}'.format(self._config))
 
         self._validate_configuration()
 
-    def _load_config(self, config_input, validator, suite_dir, suites, input_dir, output_dir):
+    def _load_config(self, config_input, validator, suite_dir, suites, tags, input_dir, output_dir):
 
         # Populating configuration
         if isinstance(config_input, dict):  # If it is a dictionary
@@ -45,6 +47,10 @@ class ArgusConfiguration(object):
         # Setting up suites to run
         if suites is not None:
             self._config['suites'] = suites.split(',')
+
+        # Setting up suites to run
+        if tags is not None:
+            self._config['tags'] = suites.split(',')
 
         # Setting up input directory
         if not ('inputDir' in self._config and self._config['inputDir']):  # Default if not in main config

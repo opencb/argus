@@ -48,6 +48,8 @@ class ArgusCLI:
                                     help='validator file path')
         execute_parser.add_argument('-s', '--suites',
                                     help='suites to run')
+        execute_parser.add_argument('-t', '--tags',
+                                    help='tags to run')
         execute_parser.add_argument('-i', '--input-dir', dest='input_dir',
                                     help='input file directory')
         execute_parser.add_argument('-o', '--output-dir', dest='output_dir',
@@ -94,6 +96,7 @@ def main():
         validator=args.validator,
         suite_dir=args.suite_dir,
         suites=args.suites,
+        tags=args.tags,
         input_dir=args.input_dir,
         output_dir=args.output_dir
     ).get_config()

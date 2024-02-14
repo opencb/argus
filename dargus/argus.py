@@ -74,10 +74,10 @@ class Argus:
             else:
                 self.auth_token = authentication['token']
 
-    def _parse_files(self, test_folder):
-        fpaths = [os.path.join(test_folder, file)
-                  for file in os.listdir(test_folder)
-                  if os.path.isfile(os.path.join(test_folder, file)) and
+    def _parse_files(self, suite_dir):
+        fpaths = [os.path.join(suite_dir, file)
+                  for file in os.listdir(suite_dir)
+                  if os.path.isfile(os.path.join(suite_dir, file)) and
                   file.endswith('.yml')]
         for fpath in fpaths:
             LOGGER.debug('Parsing file "{}"'.format(fpath))
@@ -106,9 +106,10 @@ class Argus:
         self.suite_ids.append(id_)
 
         # Filtering suites to run
-        if 'suites' in self.config and self.config['suites'] is not None:
-            if id_ not in self.config['suites']:
-                return None
+        if self.config['suites']:
+            for s in self.config['suites']:
+                if not re.findall(s, id_):
+                    return None
 
         # Getting base URL
         if suite.get('baseUrl') is None and 'baseUrl' in self.config:
@@ -137,6 +138,11 @@ class Argus:
         path = test.get('path')
         method = test.get('method')
         async_ = test.get('async')
+
+        # Run specific tags if defined
+        if self.config['tags']:
+            if tags is None or (not set(tags).intersection(set(self.config['tags']))):
+                return None
 
         # Filtering tests to run
         if 'validation' in self.config and self.config['validation'] is not None:
