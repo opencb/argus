@@ -1,4 +1,4 @@
-id: cohort
+id: validation-cohort
 variables:
   cohort_del: DEL
 tests:

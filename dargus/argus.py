@@ -21,27 +21,9 @@ LOGGER = logging.getLogger('argus_logger')
 
 
 class Argus:
-    def __init__(self, suite_dir, argus_config, output_prefix=None, output_dir=None):
+    def __init__(self, argus_config):
 
-        # Getting suite directory
-        self.suite_dir = os.path.realpath(os.path.expanduser(suite_dir))
-
-        # Getting argus configuration
         self.config = argus_config
-
-        # Setting up output directory
-        if output_dir is None:
-            self.out_fpath = suite_dir
-        else:
-            out_fpath = os.path.realpath(os.path.expanduser(output_dir))
-            os.makedirs(out_fpath, exist_ok=True)
-            self.out_fpath = out_fpath
-
-        # Setting up output file names
-        if output_prefix is None:
-            self.out_prefix = 'argus_out_' + datetime.now().strftime('%Y%m%d%H%M%S')
-        else:
-            self.out_prefix = output_prefix
 
         self.suites = []
 
@@ -70,7 +52,7 @@ class Argus:
             self.validator = Validator(config=self.config, auth_token=self.auth_token)
 
         # Parsing validation files
-        self._parse_files(self.suite_dir)  # files must be parsed after validator logs in
+        self._parse_files(self.config['suiteDir'])  # files must be parsed after validator logs in
 
     @staticmethod
     def _login(auth, field):
@@ -329,18 +311,25 @@ class Argus:
                               headers=headers)
         self.validation_results.append(vr)
 
-    def write_output(self):
+    def write_output(self, suite):
         """Write validation results in different file formats"""
 
+        # Setting up output directory
+        out_fpath = str(os.path.join(self.config['outputDir'], suite.id_))
+        os.makedirs(out_fpath, exist_ok=True)
+
+        # Setting up timestamp for file names
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+
         # Writing to JSON file
-        out_fpath_json = os.path.join(self.out_fpath, self.out_prefix + '.json')
+        out_fpath_json = os.path.join(out_fpath, '{}_{}.json'.format(suite.id_, timestamp))
         LOGGER.debug('Writing results to "{}"'.format(out_fpath_json))
         out_fhand = open(out_fpath_json, 'w')
         out_fhand.write('\n'.join([json.dumps(vr.to_json()) for vr in self.validation_results]) + '\n')
         out_fhand.close()
 
         # Writing to HTML file
-        out_fpath_html = os.path.join(self.out_fpath, self.out_prefix + '.html')
+        out_fpath_html = os.path.join(out_fpath, '{}_{}.html'.format(suite.id_, timestamp))
         LOGGER.debug('Writing results to "{}"'.format(out_fpath_html))
         out_fhand = open(out_fpath_html, 'w')
         out_fhand.write('\n'.join([vr.to_html() for vr in self.validation_results]) + '\n')
@@ -390,5 +379,5 @@ class Argus:
                     LOGGER.debug('Validating: Suite "{}"; Test "{}"; Step "{}"'.format(suite.id_, test.id_, step.id_))
                     self.get_validation_results(response, current, url, headers)
 
-        # Writing output
-        self.write_output()
+            # Writing output
+            self.write_output(suite)

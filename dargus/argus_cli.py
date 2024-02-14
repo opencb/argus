@@ -44,16 +44,14 @@ class ArgusCLI:
                                     help='configuration YML file path')
         execute_parser.add_argument('suite_dir',
                                     help='test folder containing suite YML files')
-        execute_parser.add_argument('-o', '--output-prefix', dest='output_prefix',
-                                    help='output prefix for filenames')
-        execute_parser.add_argument('-d', '--output-dir', dest='output_dir',
-                                    help='output file directory')
         execute_parser.add_argument('-v', '--validator',
                                     help='validator file path')
         execute_parser.add_argument('-s', '--suites',
                                     help='suites to run')
-        execute_parser.add_argument('-w', '--working-dir', dest='workingDir',
-                                    help='working file directory to access custom input/output files')
+        execute_parser.add_argument('-i', '--input-dir', dest='input_dir',
+                                    help='input file directory')
+        execute_parser.add_argument('-o', '--output-dir', dest='output_dir',
+                                    help='output file directory')
 
     def _stats(self):
         stats_parser = self._subparsers.add_parser('stats', parents=[self._parent_parser])
@@ -94,11 +92,15 @@ def main():
     argus_config = ArgusConfiguration(
         args.config,
         validator=args.validator,
+        suite_dir=args.suite_dir,
         suites=args.suites,
-        working_dir=args.workingDir
+        input_dir=args.input_dir,
+        output_dir=args.output_dir
     ).get_config()
 
-    client_generator = Argus(args.suite_dir, argus_config, args.output_prefix, args.output_dir)
+    client_generator = Argus(
+        argus_config=argus_config
+    )
     client_generator.execute()
 
 

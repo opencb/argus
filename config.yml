@@ -1,26 +1,34 @@
 # CUSTOM VALIDATOR
 validator: /path/to/opencga_validator.py
 
-# WORKING DIR FOR CUSTOM INPUT/OUTPUT FILES
-workingDir: /path/to/argus_working_dir
+# SUITE DIRECTORY
+suiteDir: /path/to/suites_opencga
 
-# BASE URL
-baseUrl: https://example.com/webservices/rest/v2
+# SELECTED SUITES FOR TESTING
+suites:
+  - validation-cohort
+
+# INPUT/OUTPUT DIRECTORIES
+inputDir: /path/to/input_data
+outputDir: /path/to/output_data
 
 # GLOBAL VARIABLES
 variables:
   varName: varValue
 
+# BASE URL
+baseUrl: https://example.com/webservices/rest/v2
+
 # AUTHENTICATION INFO
-#authentication:
-#  # token: ssasasdsadsadasd.sdasd.asdasd
-#  # token: env(OPENCGA_TOKEN)
-#  token: login(responses[0].results[0].token)
-#  url: https://example.com/webservices/rest/v2/users/login
-#  headers:
-#    Accept-Encoding: gzip
-#  method: POST
-#  bodyParams: {"user": "USER", "password": "PASS"}
+authentication:
+  # token: ssasasdsadsadasd.sdasd.asdasd
+  # token: env(OPENCGA_TOKEN)
+  token: login(responses[0].results[0].token)
+  url: https://example.com/webservices/rest/v2/users/login
+  headers:
+    Accept-Encoding: gzip
+  method: POST
+  bodyParams: {"user": "USER", "password": "PASS"}
 
 # DEFAULT PARAMETERS
 #headers:
@@ -28,10 +36,6 @@ variables:
 #queryParams:
 #  limit: 10
 #  count: False
-
-# SELECTED SUITES FOR TESTING
-suites:
-  - cohort
 
 # TEST SELECTION
 #tests:
