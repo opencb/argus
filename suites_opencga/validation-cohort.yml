@@ -110,16 +110,16 @@ tests:
           results:
             - opencga_query('/cohorts/search?study=validation@population:1000G&id=${cohort_del}&include=id', 'cohort_list')
             - list_length('<cohort_list>.responses[0].results', '0')
-  - id: compare_allele_freqs
+  - id: check_cohort_allele_freqs
     path: /analysis/variant/query
     method: GET
     async: false
     steps:
-      - id: compare_allele_freqs
+      - id: check_cohort_allele_freqs
         queryParams:
           study: 1000G
           limit: 1000
           exclude: annotation
         validation:
           results:
-            - validate_allele_freqs('responses[0].results', '0.99')
+            - check_cohort_allele_freqs('responses[0].results', '${INPUT_DIR}/validation-cohort/cohort_freqs_ref.tsv', '0.95')

@@ -116,11 +116,14 @@ class Argus:
             suite['baseUrl'] = self.config['baseUrl']
         base_url = suite.get('baseUrl')
 
+        # Getting suite output dir
+        output_dir = suite.get('outputDir') or os.path.join(self.config['outputDir'], id_)
+
         suite_variables = suite.get('variables') or {}
 
         tests = list(filter(None, [self._parse_test(test, suite_variables) for test in suite.get('tests')]))
 
-        suite = Suite(id_=id_, base_url=base_url, variables=suite_variables, tests=tests)
+        suite = Suite(id_=id_, base_url=base_url, variables=suite_variables, tests=tests, output_dir=output_dir)
 
         return suite
 
@@ -294,7 +297,7 @@ class Argus:
 
         return list(filter(None, steps))
 
-    def get_validation_results(self, response, current, url, headers):
+    def _get_validation_results(self, response, current, url, headers):
         # Validating response
         validation = []
         if not current.tests[0].async_:  # Non-asynchronous queries
@@ -317,25 +320,21 @@ class Argus:
                               headers=headers)
         self.validation_results.append(vr)
 
-    def write_output(self, suite):
+    def _write_output(self, suite):
         """Write validation results in different file formats"""
-
-        # Setting up output directory
-        out_fpath = str(os.path.join(self.config['outputDir'], suite.id_))
-        os.makedirs(out_fpath, exist_ok=True)
 
         # Setting up timestamp for file names
         timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
 
         # Writing to JSON file
-        out_fpath_json = os.path.join(out_fpath, '{}_{}.json'.format(suite.id_, timestamp))
+        out_fpath_json = os.path.join(suite.output_dir, '{}_{}.json'.format(suite.id_, timestamp))
         LOGGER.debug('Writing results to "{}"'.format(out_fpath_json))
         out_fhand = open(out_fpath_json, 'w')
         out_fhand.write('\n'.join([json.dumps(vr.to_json()) for vr in self.validation_results]) + '\n')
         out_fhand.close()
 
         # Writing to HTML file
-        out_fpath_html = os.path.join(out_fpath, '{}_{}.html'.format(suite.id_, timestamp))
+        out_fpath_html = os.path.join(suite.output_dir, '{}_{}.html'.format(suite.id_, timestamp))
         LOGGER.debug('Writing results to "{}"'.format(out_fpath_html))
         out_fhand = open(out_fpath_html, 'w')
         out_fhand.write('\n'.join([vr.to_html() for vr in self.validation_results]) + '\n')
@@ -351,6 +350,7 @@ class Argus:
         """
 
         for suite in self.suites:
+            os.makedirs(suite.output_dir, exist_ok=True)  # Setting up output directory for the suite
             current = suite
             for test in suite.tests:
                 current.tests = [test]
@@ -383,7 +383,7 @@ class Argus:
 
                     # Validating results
                     LOGGER.debug('Validating: Suite "{}"; Test "{}"; Step "{}"'.format(suite.id_, test.id_, step.id_))
-                    self.get_validation_results(response, current, url, headers)
+                    self._get_validation_results(response, current, url, headers)
 
             # Writing output
-            self.write_output(suite)
+            self._write_output(suite)

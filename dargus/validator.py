@@ -9,7 +9,7 @@ class Validator:
         self._config = config
         self._rest_response = None
         self._rest_response_json = None
-        self._current = None
+        self.current = None
         self._step = None
         self._stored_values = {}
         self._auth_token = auth_token
@@ -178,8 +178,8 @@ class Validator:
     def validate(self, response, current):
         self._rest_response = response
         self._rest_response_json = response.json()
-        self._current = current
-        self._step = self._current.tests[0].steps[0]
+        self.current = current
+        self._step = self.current.tests[0].steps[0]
         results = []
 
         # Time
