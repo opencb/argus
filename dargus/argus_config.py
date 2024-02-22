@@ -48,9 +48,9 @@ class ArgusConfiguration(object):
         if suites is not None:
             self._config['suites'] = suites.split(',')
 
-        # Setting up suites to run
+        # Setting up tags to run
         if tags is not None:
-            self._config['tags'] = suites.split(',')
+            self._config['tags'] = tags.split(',')
 
         # Setting up input directory
         if not ('inputDir' in self._config and self._config['inputDir']):  # Default if not in main config

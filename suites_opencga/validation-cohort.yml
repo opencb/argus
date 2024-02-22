@@ -6,6 +6,7 @@ tests:
     path: /cohorts/create
     method: POST
     async: false
+    tags: DEMO
     steps:
       - id: EAS
         queryParams:
@@ -100,6 +101,7 @@ tests:
     path: /cohorts/{cohorts}/delete
     method: DELETE
     async: false
+    tags: DEMO
     steps:
       - id: cohorts_delete
         pathParams:
@@ -114,6 +116,7 @@ tests:
     path: /analysis/variant/query
     method: GET
     async: false
+    tags: DEMO
     steps:
       - id: check_cohort_allele_freqs
         queryParams:

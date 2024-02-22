@@ -3,8 +3,6 @@ import re
 import requests
 import time
 import logging
-import gzip
-import subprocess
 
 from dargus.validator import Validator
 from dargus.utils import num_compare, plot_regression_line
