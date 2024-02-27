@@ -42,15 +42,15 @@ class ArgusCLI:
 
     def _execute(self):
         execute_parser = self._subparsers.add_parser('execute', parents=[self._parent_parser])
-        execute_parser.add_argument('config',
+        execute_parser.add_argument('config', dest='config',
                                     help='configuration YML file path')
-        execute_parser.add_argument('suite_dir',
+        execute_parser.add_argument('suite_dir', dest='suite_dir',
                                     help='test folder containing suite YML files')
-        execute_parser.add_argument('-v', '--validator',
+        execute_parser.add_argument('-v', '--validator', dest='validator',
                                     help='validator file path')
-        execute_parser.add_argument('-s', '--suites',
+        execute_parser.add_argument('-s', '--suite', dest='suites',
                                     help='suites to run')
-        execute_parser.add_argument('-t', '--tags',
+        execute_parser.add_argument('-t', '--tag', dest='tags',
                                     help='tags to run')
         execute_parser.add_argument('-i', '--input-dir', dest='input_dir',
                                     help='input file directory')
