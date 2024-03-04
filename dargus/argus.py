@@ -329,16 +329,18 @@ class Argus:
         # Writing to JSON file
         out_fpath_json = os.path.join(suite.output_dir, '{}_{}.json'.format(suite.id_, timestamp))
         LOGGER.debug('Writing results to "{}"'.format(out_fpath_json))
-        out_fhand = open(out_fpath_json, 'w')
-        out_fhand.write('\n'.join([json.dumps(vr.to_json()) for vr in self.validation_results]) + '\n')
-        out_fhand.close()
+        if not self.config['dry_run']:
+            out_fhand = open(out_fpath_json, 'w')
+            out_fhand.write('\n'.join([json.dumps(vr.to_json()) for vr in self.validation_results]) + '\n')
+            out_fhand.close()
 
         # Writing to HTML file
         out_fpath_html = os.path.join(suite.output_dir, '{}_{}.html'.format(suite.id_, timestamp))
         LOGGER.debug('Writing results to "{}"'.format(out_fpath_html))
-        out_fhand = open(out_fpath_html, 'w')
-        out_fhand.write('\n'.join([vr.to_html() for vr in self.validation_results]) + '\n')
-        out_fhand.close()
+        if not self.config['dry_run']:
+            out_fhand = open(out_fpath_html, 'w')
+            out_fhand.write('\n'.join([vr.to_html() for vr in self.validation_results]) + '\n')
+            out_fhand.close()
 
     def execute(self):
         """
@@ -370,6 +372,12 @@ class Argus:
                     # Querying current suite-test-step
                     LOGGER.debug('Querying: Suite "{}"; Test "{}"; Step "{}"'.format(suite.id_, test.id_, step.id_))
                     LOGGER.debug('Query: {} {} {}'.format(method, url, body))
+
+                    # Stop if dry-run
+                    if self.config['dry_run']:
+                        break
+
+                    # Querying
                     if not current.tests[0].async_:  # Non-asynchronous queries
                         response = query(url=url, method=method, headers=headers, body=body)
                     else:  # Asynchronous queries

@@ -9,7 +9,7 @@ LOGGER = logging.getLogger('argus_logger')
 
 class ArgusConfiguration(object):
     def __init__(self, config_input, validator=None, suite_dir=None, suites=None, tags=None, input_dir=None,
-                 output_dir=None):
+                 output_dir=None, dry_run=None):
         self._config = {
             'validator': None,
             'suiteDir': None,
@@ -17,18 +17,19 @@ class ArgusConfiguration(object):
             'tags': None,
             'inputDir': None,
             'outputDir': None,
+            'dry_run': None,
             'variables': {
                 'INPUT_DIR': None,
                 'OUTPUT_DIR': None
             }
         }
 
-        self._load_config(config_input, validator, suite_dir, suites, tags, input_dir, output_dir)
+        self._load_config(config_input, validator, suite_dir, suites, tags, input_dir, output_dir, dry_run)
         LOGGER.debug('Configuration: {}'.format(self._config))
 
         self._validate_configuration()
 
-    def _load_config(self, config_input, validator, suite_dir, suites, tags, input_dir, output_dir):
+    def _load_config(self, config_input, validator, suite_dir, suites, tags, input_dir, output_dir, dry_run):
 
         # Populating configuration
         if isinstance(config_input, dict):  # If it is a dictionary
@@ -65,6 +66,10 @@ class ArgusConfiguration(object):
         if output_dir is not None:  # Overwrite it if passed through CLI
             self._config['outputDir'] = os.path.realpath(os.path.expanduser(output_dir))
         self._config['variables']['OUTPUT_DIR'] = self._config['outputDir']  # Add to variables
+
+        # Setting up tags to run
+        if dry_run is not None:
+            self._config['dry_run'] = dry_run
 
     @staticmethod
     def _get_dictionary_from_file(config_fpath):

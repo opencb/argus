@@ -42,9 +42,9 @@ class ArgusCLI:
 
     def _execute(self):
         execute_parser = self._subparsers.add_parser('execute', parents=[self._parent_parser])
-        execute_parser.add_argument('config', dest='config',
+        execute_parser.add_argument('config',
                                     help='configuration YML file path')
-        execute_parser.add_argument('suite_dir', dest='suite_dir',
+        execute_parser.add_argument('suite_dir',
                                     help='test folder containing suite YML files')
         execute_parser.add_argument('-v', '--validator', dest='validator',
                                     help='validator file path')
@@ -56,6 +56,8 @@ class ArgusCLI:
                                     help='input file directory')
         execute_parser.add_argument('-o', '--output-dir', dest='output_dir',
                                     help='output file directory')
+        execute_parser.add_argument('--dry-run', dest='dry_run', action='store_true',
+                                    help='simulate the execution without actually querying the webservices')
 
     def _stats(self):
         stats_parser = self._subparsers.add_parser('stats', parents=[self._parent_parser])
@@ -104,7 +106,8 @@ def main():
         suites=args.suites,
         tags=args.tags,
         input_dir=args.input_dir,
-        output_dir=args.output_dir
+        output_dir=args.output_dir,
+        dry_run=args.dry_run
     ).get_config()
 
     client_generator = Argus(

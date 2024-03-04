@@ -1,0 +1,18 @@
+id: validation-export
+tests:
+  - id: aggregate_export
+    path: /analysis/variant/export/run
+    method: POST
+    async: true
+    steps:
+      - id: aggregate_export
+        queryParams:
+          study: 1000G
+          limit: 10
+        bodyMatrixParams:
+          - outputFileFormat: [VCF, JSON]
+          - ct: [missense_variant, stop_lost]
+        validation:
+          results:
+            - match('responses[0].results[0].id', 'EAS')
+            - list_length('responses[0].results[0].samples', '585')
