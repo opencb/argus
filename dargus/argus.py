@@ -375,7 +375,7 @@ class Argus:
 
                     # Stop if dry-run
                     if self.config['dry_run']:
-                        break
+                        continue
 
                     # Querying
                     if not current.tests[0].async_:  # Non-asynchronous queries

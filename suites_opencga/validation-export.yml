@@ -9,9 +9,9 @@ tests:
         queryParams:
           study: 1000G
           limit: 10
+          ct: missense_variant,stop_lost
         bodyMatrixParams:
-          - outputFileFormat: [VCF, JSON]
-          - ct: [missense_variant, stop_lost]
+          outputFileFormat: [VCF, JSON]
         validation:
           results:
             - match('responses[0].results[0].id', 'EAS')
