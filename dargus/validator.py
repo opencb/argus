@@ -47,12 +47,19 @@ class Validator:
         field_value = self.get_item(field)
         return any(re.findall(regex, field_value))
 
-    def empty(self, field):
+    def is_not_empty(self, field):
         try:
             field_value = self.get_item(field)
         except (TypeError, KeyError, IndexError):
             return False
-        return not field_value
+        return bool(field_value)
+
+    def is_empty(self, field):
+        try:
+            field_value = self.get_item(field)
+        except (TypeError, KeyError, IndexError):
+            return False
+        return not bool(field_value)
 
     def list_length(self, field, value, operator='eq'):
         field_value = self.get_item(field)

@@ -74,56 +74,79 @@ class Argus:
             else:
                 self.auth_token = authentication['token']
 
+    def _select_suites_to_run(self, fpaths):
+        selected_suites = []
+        for fpath in fpaths:
+            # Getting suite ID (basename without last file extension)
+            suite_id = '.'.join(os.path.basename(fpath).split('.')[:-1])
+
+            # Checking if duplicated ID
+            if suite_id in self.suite_ids:
+                raise ValueError('Duplicated suite ID "{}"'.format(suite_id))
+            self.suite_ids.append(suite_id)
+
+            # Filtering suites to run with regex support
+            if self.config['suites']:
+                for s in self.config['suites']:
+                    match = re.findall('^' + s + '$', suite_id)
+                    if match and match[0] == suite_id:
+                        selected_suites.append({'id': suite_id, 'fpath': fpath})
+            else:
+                selected_suites.append({'id': suite_id, 'fpath': fpath})
+
+        return selected_suites
+
     def _parse_files(self, suite_dir):
+        # Getting all yml files from suite folder
         fpaths = [os.path.join(suite_dir, file)
                   for file in os.listdir(suite_dir)
                   if os.path.isfile(os.path.join(suite_dir, file)) and
                   file.endswith('.yml')]
-        for fpath in fpaths:
-            LOGGER.debug('Parsing file "{}"'.format(fpath))
-            with open(fpath, 'r') as fhand:
+
+        # Filtering suites to run
+        selected_suites = self._select_suites_to_run(fpaths)
+
+        # Parsing suite file
+        for selected_suite in selected_suites:
+            suite_id, suite_fpath = selected_suite['id'], selected_suite['fpath']
+            LOGGER.debug('Parsing file "{}"'.format(suite_fpath))
+            with open(suite_fpath, 'r') as suite_fhand:
                 # Replacing RANDOM template functions
-                replace_random_vars(fhand.readlines())
-                fhand.seek(0)
+                replace_random_vars(suite_fhand.readlines())
+                suite_fhand.seek(0)
+
                 # Loading YAML
                 try:
-                    yaml_content = yaml.safe_load(fhand)
+                    suite_content = yaml.safe_load(suite_fhand)
                 except yaml.parser.ParserError as e:
                     msg = 'Skipping file "{}". Unable to parse YML file. {}.'
-                    LOGGER.error(msg.format(fpath, ' '.join(str(e).replace('\n', ' ').split()).capitalize()))
+                    LOGGER.error(msg.format(suite_fpath, ' '.join(str(e).replace('\n', ' ').split()).capitalize()))
                     continue
-            suite = self._parse_suite(yaml_content)
+
+            suite = self._parse_suite(suite_id, suite_content)
             if suite is not None:
                 self.suites.append(suite)
 
-    def _parse_suite(self, suite):
-        # Getting suite ID
-        id_ = suite.get('id')
-        if id_ is None:
-            raise ValueError('Field "id" is required for each suite')
-        if id_ in self.suite_ids:
-            raise ValueError('Duplicated suite ID "{}"'.format(id_))
-        self.suite_ids.append(id_)
-
-        # Filtering suites to run
-        if self.config['suites']:
-            for s in self.config['suites']:
-                if not re.findall(s, id_):
-                    return None
-
+    def _parse_suite(self, suite_id, suite):
         # Getting base URL
         if suite.get('baseUrl') is None and 'baseUrl' in self.config:
             suite['baseUrl'] = self.config['baseUrl']
         base_url = suite.get('baseUrl')
 
         # Getting suite output dir
-        output_dir = suite.get('outputDir') or os.path.join(self.config['outputDir'], id_)
+        output_dir = suite.get('outputDir') or os.path.join(self.config['outputDir'], suite_id)
 
+        # Getting suite parameters
+        name = suite.get('name') or suite_id
+        description = suite.get('description')
         suite_variables = suite.get('variables') or {}
 
+        # Getting tests
         tests = list(filter(None, [self._parse_test(test, suite_variables) for test in suite.get('tests')]))
 
-        suite = Suite(id_=id_, base_url=base_url, variables=suite_variables, tests=tests, output_dir=output_dir)
+        # Creating suite
+        suite = Suite(id_=suite_id, name=name, description=description, base_url=base_url, variables=suite_variables,
+                      tests=tests, output_dir=output_dir)
 
         return suite
 
@@ -136,6 +159,7 @@ class Argus:
             raise ValueError('Duplicated test ID "{}"'.format(id_))
         self.test_ids.append(id_)
 
+        description = test.get('description')
         test_variables = test.get('variables') or {}
         tags = test.get('tags').split(',') if test.get('tags') else None
         path = test.get('path')
@@ -173,8 +197,8 @@ class Argus:
         for step in test.get('steps'):
             steps += list(filter(None, self._parse_step(step, suite_variables, test_variables)))
 
-        test = Test(id_=id_, variables=test_variables, tags=tags, path=path, method=method, headers=headers,
-                    async_=async_, steps=steps)
+        test = Test(id_=id_, description=description, variables=test_variables, tags=tags, path=path, method=method,
+                    headers=headers, async_=async_, steps=steps)
         return test
 
     @staticmethod
@@ -238,6 +262,7 @@ class Argus:
             raise ValueError('Duplicated step ID "{}"'.format(id_))
         self.step_ids.append(id_)
 
+        description = step.get('description')
         step_variables = step.get('variables') or {}
         path_params = step.get('pathParams')
         query_params = step.get('queryParams')
@@ -290,8 +315,8 @@ class Argus:
 
         # Creating steps
         steps = [
-            Step(id_=id_, variables=step_variables, path_params=path_params, query_params=step_params[i][0],
-                 body_params=step_params[i][1], validation=validation)
+            Step(id_=id_, description=description, variables=step_variables, path_params=path_params,
+                 query_params=step_params[i][0], body_params=step_params[i][1], validation=validation)
             for i, id_ in enumerate(id_list)
         ]
 
