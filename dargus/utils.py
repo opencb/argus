@@ -8,6 +8,10 @@ import string
 import requests
 from importlib.metadata import version
 
+import pandas as pd
+import seaborn as sns
+import scipy.stats as stats
+import matplotlib.pyplot as plt
 
 LOGGER = logging.getLogger('argus_logger')
 
@@ -151,7 +155,7 @@ def replace_random_vars(lines):
 
 
 def replace_variables(item, variables):
-    if item is None or isinstance(item, bool):
+    if item is None or isinstance(item, bool) or isinstance(item, int) or isinstance(item, float):
         return item
     if isinstance(item, list):
         for i, list_item in enumerate(item):
@@ -160,6 +164,44 @@ def replace_variables(item, variables):
         for k in item:
             item[k] = replace_variables(item[k], variables)
     else:
-        if item[1:-1] in variables:
-            item = variables[item[1:-1]]
+        for variable in variables:
+            # Format: to include a brace character in the literal text, it can be escaped by doubling: {{ and }}
+            item = item.replace('${{{var}}}'.format(var=variable), variables[variable])
     return item
+
+
+def plot_regression_line(input_fpath, output_fpath, x=1, y=2, sep='\t', header=True):
+
+    # Reading inpiut data
+    header = 0 if header else None
+    input_data = pd.read_csv(input_fpath, sep=sep, header=header)
+
+    # Getting data points
+    x = input_data.columns[x]
+    y = input_data.columns[y]
+
+    # Creating plot
+    plot = sns.regplot(x=x, y=y, data=input_data)
+
+    # Calculating slope and intercept of regression equation
+    slope, intercept, r, p, sterr = stats.linregress(x=plot.get_lines()[0].get_xdata(),
+                                                     y=plot.get_lines()[0].get_ydata())
+
+    # Adding regression equation and r2 to plot
+    txt = 'y = {} + {}x\nr2 = {}'.format(round(intercept, 3), round(slope, 3), round(r, 3))
+    plot.set_title('{}'.format(txt))
+
+    # Saving plot
+    if output_fpath.endswith('.png'):
+        plt.savefig(output_fpath)
+    elif output_fpath.endswith('.jpg'):
+        plt.savefig(output_fpath, dpi=300)
+    elif output_fpath.endswith('.svg'):
+        plt.savefig(output_fpath, format='svg')
+    elif output_fpath.endswith('.pdf'):
+        plt.savefig(output_fpath, format='pdf')
+    else:
+        msg = 'Format for file {} not recognised. Please use one of the following extensions: [.png|.jpg|.svg|.pdf]'
+        raise ValueError(msg.format(output_fpath))
+
+    return r

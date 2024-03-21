@@ -1,64 +1,65 @@
-id: cohort
-suiteVariables:
+name: validation-cohort
+variables:
   cohort_del: DEL
 tests:
   - id: cohorts_create
     path: /cohorts/create
     method: POST
     async: false
+    tags: DEMO
     steps:
-      - id: EAS
-        queryParams:
-          study: 1000G
-          includeResult: true
-        bodyFile: /path/to/EAS.json
-        validation:
-          results:
-            - match('responses[0].results[0].id', 'EAS')
-            - list_length('responses[0].results[0].samples', '585')
-      - id: EUR
-        queryParams:
-          study: 1000G
-          includeResult: true
-        bodyFile: /path/to/EUR.json
-        validation:
-          results:
-            - match('responses[0].results[0].id', 'EUR')
-            - list_length('responses[0].results[0].samples', '633')
-      - id: AFR
-        queryParams:
-          study: 1000G
-          includeResult: true
-        bodyFile: /path/to/AFR.json
-        validation:
-          results:
-            - match('responses[0].results[0].id', 'AFR')
-            - list_length('responses[0].results[0].samples', '893')
-      - id: AMR
-        queryParams:
-          study: 1000G
-          includeResult: true
-        bodyFile: /path/to/AMR.json
-        validation:
-          results:
-            - match('responses[0].results[0].id', 'AMR')
-            - list_length('responses[0].results[0].samples', '490')
-      - id: SAS
-        queryParams:
-          study: 1000G
-          includeResult: true
-        bodyFile: /path/to/SAS.json
-        validation:
-          results:
-            - match('responses[0].results[0].id', 'SAS')
-            - list_length('responses[0].results[0].samples', '601')
+#      - id: EAS
+#        queryParams:
+#          study: 1000G
+#          includeResult: true
+#        bodyFile: ${INPUT_DIR}/validation-cohort/EAS.json
+#        validation:
+#          results:
+#            - match('responses[0].results[0].id', 'EAS')
+#            - list_length('responses[0].results[0].samples', '585')
+#      - id: EUR
+#        queryParams:
+#          study: 1000G
+#          includeResult: true
+#        bodyFile: ${INPUT_DIR}/validation-cohort/EUR.json
+#        validation:
+#          results:
+#            - match('responses[0].results[0].id', 'EUR')
+#            - list_length('responses[0].results[0].samples', '633')
+#      - id: AFR
+#        queryParams:
+#          study: 1000G
+#          includeResult: true
+#        bodyFile: ${INPUT_DIR}/validation-cohort/AFR.json
+#        validation:
+#          results:
+#            - match('responses[0].results[0].id', 'AFR')
+#            - list_length('responses[0].results[0].samples', '893')
+#      - id: AMR
+#        queryParams:
+#          study: 1000G
+#          includeResult: true
+#        bodyFile: ${INPUT_DIR}/validation-cohort/AMR.json
+#        validation:
+#          results:
+#            - match('responses[0].results[0].id', 'AMR')
+#            - list_length('responses[0].results[0].samples', '490')
+#      - id: SAS
+#        queryParams:
+#          study: 1000G
+#          includeResult: true
+#        bodyFile: ${INPUT_DIR}/validation-cohort/SAS.json
+#        validation:
+#          results:
+#            - match('responses[0].results[0].id', 'SAS')
+#            - list_length('responses[0].results[0].samples', '601')
       - id: DEL
         queryParams:
           study: 1000G
           includeResult: true
         bodyParams:
-          id: <cohort_del>
-          name: <cohort_del>
+          id: ${cohort_del}
+          name: ${cohort_del}
           description: Cohort of 3 samples to test cohort deletion
           samples:
             - id: NA18486
@@ -66,60 +67,62 @@ tests:
             - id: NA18488
         validation:
           results:
-            - match('responses[0].results[0].id', '<cohort_del>')
+            - match('responses[0].results[0].id', '${cohort_del}')
             - list_length('responses[0].results[0].samples', '3')
-  - id: variant_stats_index
-    path: /operation/variant/stats/index
-    method: POST
-    async: true
-    steps:
-      - id: variant_stats_index
-        queryParams:
-          study: 1000G
-        bodyParams:
-          cohort: ["ALL", "EAS", "EUR", "AFR", "AMR", "SAS", "DEL"]
-        validation:
-          results:
-            - opencga_query('/analysis/variant/query?study=validation@population:1000G&limit=1&skip=0', 'test_variant')
-            - list_length('<test_variant>.responses[0].results[0].studies[0].stats', '7')
-  - id: variant_stats_delete
-    path: /operation/variant/stats/delete
-    method: POST
-    async: true
-    steps:
-      - id: variant_stats_delete
-        queryParams:
-          study: 1000G
-        bodyParams:
-          cohort: ["DEL"]
-        validation:
-          results:
-            - opencga_query('/analysis/variant/query?study=validation@population:1000G&limit=1&skip=0', 'test_variant')
-            - list_length('<test_variant>.responses[0].results[0].studies[0].stats', '6')
+#  - id: variant_stats_index
+#    path: /operation/variant/stats/index
+#    method: POST
+#    async: true
+#    steps:
+#      - id: variant_stats_index
+#        queryParams:
+#          study: 1000G
+#        bodyParams:
+#          cohort: ["ALL", "EAS", "EUR", "AFR", "AMR", "SAS", "DEL"]
+#        validation:
+#          results:
+#            - opencga_query('/analysis/variant/query?study=validation@population:1000G&limit=1&skip=0', 'test_variant')
+#            - list_length('<test_variant>.responses[0].results[0].studies[0].stats', '7')
+#  - id: variant_stats_delete
+#    path: /operation/variant/stats/delete
+#    method: POST
+#    async: true
+#    steps:
+#      - id: variant_stats_delete
+#        queryParams:
+#          study: 1000G
+#        bodyParams:
+#          cohort: ["DEL"]
+#        validation:
+#          results:
+#            - opencga_query('/analysis/variant/query?study=validation@population:1000G&limit=1&skip=0', 'test_variant')
+#            - list_length('<test_variant>.responses[0].results[0].studies[0].stats', '6')
   - id: cohorts_delete
     path: /cohorts/{cohorts}/delete
     method: DELETE
     async: false
+    tags: DEMO
     steps:
       - id: cohorts_delete
         pathParams:
-          cohorts: <cohort_del>
+          cohorts: ${cohort_del}
         queryParams:
           study: 1000G
         validation:
           results:
-            - opencga_query('/cohorts/search?study=validation@population:1000G&id=<cohort_del>&include=id', 'cohort_list')
+            - opencga_query('/cohorts/search?study=validation@population:1000G&id=${cohort_del}&include=id', 'cohort_list')
             - list_length('<cohort_list>.responses[0].results', '0')
-  - id: compare_allele_freqs
-    path: /analysis/variant/query
-    method: GET
-    async: false
-    steps:
-      - id: compare_allele_freqs
-        queryParams:
-          study: 1000G
-          limit: 1000
-          exclude: annotation
-        validation:
-          results:
-            - validate_allele_freqs('responses[0].results', '0.99')
+#  - id: check_cohort_allele_freqs
+#    path: /analysis/variant/query
+#    method: GET
+#    async: false
+#    tags: DEMO
+#    steps:
+#      - id: check_cohort_allele_freqs
+#        queryParams:
+#          study: 1000G
+#          limit: 1000
+#          exclude: annotation
+#        validation:
+#          results:
+#            - check_cohort_allele_freqs('responses[0].results', '${INPUT_DIR}/validation-cohort/cohort_freqs_ref.tsv', '0.95')

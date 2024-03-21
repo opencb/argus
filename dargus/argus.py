@@ -3,6 +3,7 @@ import logging
 import importlib.util
 
 import yaml
+import re
 import json
 from itertools import product
 from datetime import datetime
@@ -19,27 +20,9 @@ LOGGER = logging.getLogger('argus_logger')
 
 
 class Argus:
-    def __init__(self, suite_dir, argus_config, output_prefix=None, output_dir=None):
+    def __init__(self, argus_config):
 
-        # Getting suite directory
-        self.suite_dir = os.path.realpath(os.path.expanduser(suite_dir))
-
-        # Getting argus configuration
         self.config = argus_config
-
-        # Setting up output directory
-        if output_dir is None:
-            self.out_fpath = suite_dir
-        else:
-            out_fpath = os.path.realpath(os.path.expanduser(output_dir))
-            os.makedirs(out_fpath, exist_ok=True)
-            self.out_fpath = out_fpath
-
-        # Setting up output file names
-        if output_prefix is None:
-            self.out_prefix = 'argus_out_' + datetime.now().strftime('%Y%m%d%H%M%S')
-        else:
-            self.out_prefix = output_prefix
 
         self.suites = []
 
@@ -68,54 +51,81 @@ class Argus:
         self.validator.login()
 
         # Parsing validation files
-        self._parse_files(self.suite_dir)  # files must be parsed after validator logs in
+        self._parse_files(self.config['suiteDir'])  # files must be parsed after validator logs in
 
-    def _parse_files(self, test_folder):
-        fpaths = [os.path.join(test_folder, file)
-                  for file in os.listdir(test_folder)
-                  if os.path.isfile(os.path.join(test_folder, file)) and
-                  file.endswith('.yml')]
+    def _select_suites_to_run(self, fpaths):
+        selected_suites = []
         for fpath in fpaths:
-            LOGGER.debug('Parsing file "{}"'.format(fpath))
-            with open(fpath, 'r') as fhand:
+            # Getting suite ID (basename without last file extension)
+            suite_id = '.'.join(os.path.basename(fpath).split('.')[:-1])
+
+            # Checking if duplicated ID
+            if suite_id in self.suite_ids:
+                raise ValueError('Duplicated suite ID "{}"'.format(suite_id))
+            self.suite_ids.append(suite_id)
+
+            # Filtering suites to run with regex support
+            if self.config['suites']:
+                for s in self.config['suites']:
+                    match = re.findall('^' + s + '$', suite_id)
+                    if match and match[0] == suite_id:
+                        selected_suites.append({'id': suite_id, 'fpath': fpath})
+            else:
+                selected_suites.append({'id': suite_id, 'fpath': fpath})
+
+        return selected_suites
+
+    def _parse_files(self, suite_dir):
+        # Getting all yml files from suite folder
+        fpaths = [os.path.join(suite_dir, file)
+                  for file in os.listdir(suite_dir)
+                  if os.path.isfile(os.path.join(suite_dir, file)) and
+                  file.endswith('.yml')]
+
+        # Filtering suites to run
+        selected_suites = self._select_suites_to_run(fpaths)
+
+        # Parsing suite file
+        for selected_suite in selected_suites:
+            suite_id, suite_fpath = selected_suite['id'], selected_suite['fpath']
+            LOGGER.debug('Parsing file "{}"'.format(suite_fpath))
+            with open(suite_fpath, 'r') as suite_fhand:
                 # Replacing RANDOM template functions
-                replace_random_vars(fhand.readlines())
-                fhand.seek(0)
+                replace_random_vars(suite_fhand.readlines())
+                suite_fhand.seek(0)
+
                 # Loading YAML
                 try:
-                    yaml_content = yaml.safe_load(fhand)
+                    suite_content = yaml.safe_load(suite_fhand)
                 except yaml.parser.ParserError as e:
                     msg = 'Skipping file "{}". Unable to parse YML file. {}.'
-                    LOGGER.error(msg.format(fpath, ' '.join(str(e).replace('\n', ' ').split()).capitalize()))
+                    LOGGER.error(msg.format(suite_fpath, ' '.join(str(e).replace('\n', ' ').split()).capitalize()))
                     continue
-            suite = self._parse_suite(yaml_content)
+
+            suite = self._parse_suite(suite_id, suite_content)
             if suite is not None:
                 self.suites.append(suite)
 
-    def _parse_suite(self, suite):
-        # Getting suite ID
-        id_ = suite.get('id')
-        if id_ is None:
-            raise ValueError('Field "id" is required for each suite')
-        if id_ in self.suite_ids:
-            raise ValueError('Duplicated suite ID "{}"'.format(id_))
-        self.suite_ids.append(id_)
-
-        # Filtering suites to run
-        if 'suites' in self.config and self.config['suites'] is not None:
-            if id_ not in self.config['suites']:
-                return None
-
+    def _parse_suite(self, suite_id, suite):
         # Getting base URL
         if suite.get('baseUrl') is None and 'baseUrl' in self.config:
             suite['baseUrl'] = self.config['baseUrl']
         base_url = suite.get('baseUrl')
 
-        suite_variables = suite.get('suiteVariables') or {}
+        # Getting suite output dir
+        output_dir = suite.get('outputDir') or os.path.join(self.config['outputDir'], suite_id)
 
+        # Getting suite parameters
+        name = suite.get('name') or suite_id
+        description = suite.get('description')
+        suite_variables = suite.get('variables') or {}
+
+        # Getting tests
         tests = list(filter(None, [self._parse_test(test, suite_variables) for test in suite.get('tests')]))
 
-        suite = Suite(id_=id_, base_url=base_url, suite_variables=suite_variables, tests=tests)
+        # Creating suite
+        suite = Suite(id_=suite_id, name=name, description=description, base_url=base_url, variables=suite_variables,
+                      tests=tests, output_dir=output_dir)
 
         return suite
 
@@ -128,11 +138,17 @@ class Argus:
             raise ValueError('Duplicated test ID "{}"'.format(id_))
         self.test_ids.append(id_)
 
-        test_variables = test.get('testVariables') or {}
+        description = test.get('description')
+        test_variables = test.get('variables') or {}
         tags = test.get('tags').split(',') if test.get('tags') else None
         path = test.get('path')
         method = test.get('method')
         async_ = test.get('async')
+
+        # Run specific tags if defined
+        if self.config['tags']:
+            if tags is None or (not set(tags).intersection(set(self.config['tags']))):
+                return None
 
         # Filtering tests to run
         if 'validation' in self.config and self.config['validation'] is not None:
@@ -158,8 +174,8 @@ class Argus:
         for step in test.get('steps'):
             steps += list(filter(None, self._parse_step(step, suite_variables, test_variables)))
 
-        test = Test(id_=id_, test_variables=test_variables, tags=tags, path=path, method=method, headers=headers,
-                    async_=async_, steps=steps)
+        test = Test(id_=id_, description=description, variables=test_variables, tags=tags, path=path, method=method,
+                    headers=headers, async_=async_, steps=steps)
         return test
 
     @staticmethod
@@ -223,7 +239,8 @@ class Argus:
             raise ValueError('Duplicated step ID "{}"'.format(id_))
         self.step_ids.append(id_)
 
-        step_variables = step.get('stepVariables') or {}
+        description = step.get('description')
+        step_variables = step.get('variables') or {}
         path_params = step.get('pathParams')
         query_params = step.get('queryParams')
         query_matrix_params = step.get('queryMatrixParams')
@@ -231,6 +248,12 @@ class Argus:
         body_matrix_params = step.get('bodyMatrixParams')
         body_file = step.get('bodyFile')
         validation = step.get('validation')
+
+        # Get variables
+        variables = self.config['variables'].copy()
+        variables.update(suite_variables)
+        variables.update(test_variables)
+        variables.update(step_variables)
 
         # Parsing matrix params
         if query_matrix_params is not None:
@@ -248,20 +271,16 @@ class Argus:
                         query_params[key] = default_params[key]
 
         # Parsing body params
+        if variables:
+            body_file = replace_variables(body_file, variables)
         body_params_list = self._parse_body(id_, body_params, body_matrix_params, body_file)
 
-        # Replace variables
-        variables = suite_variables.copy()
-        variables.update(test_variables)
-        variables.update(step_variables)
+        # Replacing variables
         if variables:
             path_params = replace_variables(path_params, variables)
             query_params_list = replace_variables(query_params_list, variables)
             body_params_list = replace_variables(body_params_list, variables)
-            validation_functions = validation.get('results') or {}
-            for i, function in enumerate(validation_functions):
-                for var in variables:
-                    validation_functions[i] = function.replace('<{}>'.format(var), variables[var])
+            validation = replace_variables(validation, variables)
 
         # Cartesian product between query and body params
         step_params = [i for i in product(query_params_list, body_params_list)]
@@ -273,8 +292,8 @@ class Argus:
 
         # Creating steps
         steps = [
-            Step(id_=id_, step_variables=step_variables, path_params=path_params, query_params=step_params[i][0],
-                 body_params=step_params[i][1], validation=validation)
+            Step(id_=id_, description=description, variables=step_variables, path_params=path_params,
+                 query_params=step_params[i][0], body_params=step_params[i][1], validation=validation)
             for i, id_ in enumerate(id_list)
         ]
 
@@ -287,10 +306,12 @@ class Argus:
             response_is_valid, events = self.validator.validate_response(response)
             if response_is_valid:
                 validation = self.validator.validate(response, current)
+            self.validator.run_after_validation(response, current)
         else:  # Asynchronous queries
             response_is_valid, events = self.validator.validate_async_response(response)
             if response_is_valid:
                 validation = self.validator.validate(response, current)
+            self.validator.run_after_async_validation(response, current)
 
         # Creating validation result
         vr = ValidationResult(current=current,
@@ -301,22 +322,27 @@ class Argus:
                               headers=headers)
         self.validation_results.append(vr)
 
-    def _write_output(self):
+    def _write_output(self, suite):
         """Write validation results in different file formats"""
 
+        # Setting up timestamp for file names
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+
         # Writing to JSON file
-        out_fpath_json = os.path.join(self.out_fpath, self.out_prefix + '.json')
+        out_fpath_json = os.path.join(suite.output_dir, '{}_{}.json'.format(suite.id_, timestamp))
         LOGGER.debug('Writing results to "{}"'.format(out_fpath_json))
-        out_fhand = open(out_fpath_json, 'w')
-        out_fhand.write('\n'.join([json.dumps(vr.to_json()) for vr in self.validation_results]) + '\n')
-        out_fhand.close()
+        if not self.config['dry_run']:
+            out_fhand = open(out_fpath_json, 'w')
+            out_fhand.write('\n'.join([json.dumps(vr.to_json()) for vr in self.validation_results]) + '\n')
+            out_fhand.close()
 
         # Writing to HTML file
-        out_fpath_html = os.path.join(self.out_fpath, self.out_prefix + '.html')
+        out_fpath_html = os.path.join(suite.output_dir, '{}_{}.html'.format(suite.id_, timestamp))
         LOGGER.debug('Writing results to "{}"'.format(out_fpath_html))
-        out_fhand = open(out_fpath_html, 'w')
-        out_fhand.write('\n'.join([vr.to_html() for vr in self.validation_results]) + '\n')
-        out_fhand.close()
+        if not self.config['dry_run']:
+            out_fhand = open(out_fpath_html, 'w')
+            out_fhand.write('\n'.join([vr.to_html() for vr in self.validation_results]) + '\n')
+            out_fhand.close()
 
     def execute(self):
         """
@@ -328,6 +354,7 @@ class Argus:
         """
 
         for suite in self.suites:
+            os.makedirs(suite.output_dir, exist_ok=True)  # Setting up output directory for the suite
             current = suite
             for test in suite.tests:
                 current.tests = [test]
@@ -347,6 +374,12 @@ class Argus:
                     # Querying current suite-test-step
                     LOGGER.debug('Querying: Suite "{}"; Test "{}"; Step "{}"'.format(suite.id_, test.id_, step.id_))
                     LOGGER.debug('Query: {} {} {}'.format(method, url, body))
+
+                    # Stop if dry-run
+                    if self.config['dry_run']:
+                        continue
+
+                    # Querying
                     if not current.tests[0].async_:  # Non-asynchronous queries
                         response = query(url=url, method=method, headers=headers, body=body)
                     else:  # Asynchronous queries
@@ -359,5 +392,5 @@ class Argus:
                     LOGGER.debug('Validating: Suite "{}"; Test "{}"; Step "{}"'.format(suite.id_, test.id_, step.id_))
                     self._get_validation_results(response, current, url, headers)
 
-        # Writing output
-        self._write_output()
+            # Writing output
+            self._write_output(suite)

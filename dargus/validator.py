@@ -9,7 +9,7 @@ class Validator:
         self._config = config
         self._rest_response = None
         self._rest_response_json = None
-        self._current = None
+        self.current = None
         self._step = None
         self._stored_values = {}
 
@@ -46,12 +46,19 @@ class Validator:
         field_value = self.get_item(field)
         return any(re.findall(regex, field_value))
 
-    def empty(self, field):
+    def is_not_empty(self, field):
         try:
             field_value = self.get_item(field)
         except (TypeError, KeyError, IndexError):
             return False
-        return not field_value
+        return bool(field_value)
+
+    def is_empty(self, field):
+        try:
+            field_value = self.get_item(field)
+        except (TypeError, KeyError, IndexError):
+            return False
+        return not bool(field_value)
 
     def list_length(self, field, value, operator='eq'):
         field_value = self.get_item(field)
@@ -177,8 +184,8 @@ class Validator:
     def validate(self, response, current):
         self._rest_response = response
         self._rest_response_json = response.json()
-        self._current = current
-        self._step = self._current.tests[0].steps[0]
+        self.current = current
+        self._step = self.current.tests[0].steps[0]
         results = []
 
         # Time
@@ -224,5 +231,8 @@ class Validator:
     def validate_async_response(self, response):
         return True, None
 
-    def login(self):
-        return None
+    def run_after_validation(self, response, current):
+        pass
+
+    def run_after_async_validation(self, response, current):
+        pass

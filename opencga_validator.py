@@ -3,11 +3,9 @@ import re
 import requests
 import time
 import logging
-import gzip
-import subprocess
 
 from dargus.validator import Validator
-from dargus.utils import create_url, query, get_item_from_json, num_compare
+from dargus.utils import create_url, query, get_item_from_json, num_compare, plot_regression_line
 
 LOGGER = logging.getLogger('argus_logger')
 
@@ -135,8 +133,8 @@ class OpencgaValidator(Validator):
         base_url = None
         if self._config.get('baseUrl') is not None:
             base_url = self._config.get('baseUrl')
-        if self._current.base_url is not None:
-            base_url = self._current.base_url
+        if self.current.base_url is not None:
+            base_url = self.current.base_url
 
         # Querying the endpoint and storing the response internally
         response = requests.get(url=base_url + path, headers=self._current.tests[0].headers)
@@ -144,11 +142,11 @@ class OpencgaValidator(Validator):
 
         return True
 
-    def validate_allele_freqs(self, variants, r_squared):
+    def check_cohort_allele_freqs(self, opencga_variants, reference_fpath, r_squared):
         # Getting cohort variant allele frequencies from opencga
         variant_id_list = []
         opencga_cohort_freqs = {}
-        for variant_data in self.get_item(variants):
+        for variant_data in self.get_item(opencga_variants):
             variant_id = 'chr{}:{}:{}:{}'.format(variant_data['chromosome'], variant_data['start'],
                                                  variant_data['reference'], variant_data['alternate'])
             variant_id_list.append(variant_id)
@@ -156,45 +154,31 @@ class OpencgaValidator(Validator):
                                                 for cohort_data in variant_data['studies'][0]['stats']
                                                 if cohort_data['cohortId'] in ['EUR', 'EAS', 'AMR', 'SAS', 'AFR']}
 
-        # Getting cohort variant allele frequencies from reference VCF
-        reference_vcf_fpath = os.path.join(
-            self._config['workingDir'], 'validation-cohort',
-            '20201028_CCDG_14151_B01_GRM_WGS_2020-08-05_chr22.recalibrated_variants.subset_1000.vcf.gz'
-        )
-        reference_vcf_cohort_freqs = {}
-        for line in gzip.open(reference_vcf_fpath, 'r'):
-            line = line.decode()
-            if line.startswith('#'):  # Skip VCF header
-                continue
-            line_items = line.split()
-            if ',' in line_items[3] or ',' in line_items[4]:  # Skip multiallelic variants
-                continue
-            variant_id = '{}:{}:{}:{}'.format(line_items[0], line_items[1], line_items[3], line_items[4])
-            reference_vcf_cohort_freqs[variant_id] = {
-                key_value.split('=')[0][3:]: float(key_value.split('=')[1])
-                for key_value in line.split()[7].split(';')
-                if '=' in key_value and key_value.split('=')[0] in ['AF_EUR', 'AF_EAS', 'AF_AMR', 'AF_SAS', 'AF_AFR']
-            }
+        # Getting cohort variant allele frequencies from reference file
+        reference_fpath = os.path.realpath(os.path.expanduser(reference_fpath))
+        reference_fhand = open(reference_fpath, 'r')
+        reference_fhand.readline()  # Skip header
+        reference_cohort_freqs = {}
+        for line in reference_fhand:
+            variant_id, cohort, cohort_freq = line.split()
+            reference_cohort_freqs.setdefault(variant_id, {}).update({cohort: cohort_freq})
 
         # Writing allele frequencies
-        out_fhand = open(os.path.join(self._config['workingDir'], 'validation-cohort', 'out', 'out.tsv'), 'w')
-        out_fhand.write('\t'.join(['id', 'cohort', 'opencga', 'reference']) + '\n')
+        cohort_freqs_fpath = os.path.join(self.current.output_dir, 'cohort_freqs_comparison.tsv')
+        cohort_freqs_fhand = open(cohort_freqs_fpath, 'w')
+        cohort_freqs_fhand.write('\t'.join(['id', 'opencga', 'reference', 'cohort']) + '\n')
         for id_ in variant_id_list:
-            if id_ in opencga_cohort_freqs and id_ in reference_vcf_cohort_freqs:
+            if id_ in opencga_cohort_freqs and id_ in reference_cohort_freqs:
                 for cohort in ['EUR', 'EAS', 'AMR', 'SAS', 'AFR']:
-                    line = '\t'.join(map(str, [id_, cohort, opencga_cohort_freqs[id_][cohort],
-                                               reference_vcf_cohort_freqs[id_][cohort]]))
-                    out_fhand.write(line + '\n')
-        out_fhand.close()
+                    line = '\t'.join(map(str, [id_, opencga_cohort_freqs[id_][cohort],
+                                               reference_cohort_freqs[id_][cohort], cohort]))
+                    cohort_freqs_fhand.write(line + '\n')
+        cohort_freqs_fhand.close()
 
-        # Plotting regression line with Rscript
-        cmd = ["/usr/bin/Rscript",
-               "--vanilla",
-               os.path.join(self._config['workingDir'], 'validation-cohort', 'allele_freqs.R'),
-               os.path.join(self._config['workingDir'], 'validation-cohort', 'out', 'out.tsv'),
-               os.path.join(self._config['workingDir'], 'validation-cohort', 'out')]
-        result = subprocess.run(cmd, capture_output=True)
+        # Plotting regression line
+        r_linreg = plot_regression_line(input_fpath=cohort_freqs_fpath,
+                                        output_fpath=os.path.join(self.current.output_dir, 'linreg.png'))
 
-        if float(result.stdout.split()[1]) < float(r_squared):
+        if float(r_linreg) <= float(r_squared):
             return False
         return True
