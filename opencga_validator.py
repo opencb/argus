@@ -1,10 +1,11 @@
+import os
 import re
 import requests
 import time
 import logging
 
 from dargus.validator import Validator
-from dargus.utils import num_compare
+from dargus.utils import num_compare, plot_regression_line
 
 LOGGER = logging.getLogger('argus_logger')
 
@@ -15,8 +16,13 @@ class OpencgaValidator(Validator):
 
     def validate_response(self, response):
         response_json = response.json()
+        events = []
+        if 'events' in response_json and response_json['events']:
+            events = response_json['events']
         if 'events' in response_json['responses'][0] and response_json['responses'][0]['events']:
-            for event in response_json['responses'][0]['events']:
+            events = response_json['responses'][0]['events']
+        if events:
+            for event in events:
                 if event['type'] == 'ERROR':
                     LOGGER.error('Event: "{}"'.format(event))
                     return False, event
@@ -89,12 +95,53 @@ class OpencgaValidator(Validator):
         base_url = None
         if self._config.get('baseUrl') is not None:
             base_url = self._config.get('baseUrl')
-        if self._current.base_url is not None:
-            base_url = self._current.base_url
+        if self.current.base_url is not None:
+            base_url = self.current.base_url
 
         # Querying the endpoint and storing the response internally
         response = requests.get(base_url + path,
                                 headers={"Authorization": 'Bearer {}'.format(self._auth_token)})
         self._stored_values[variable_name] = response.json()
 
+        return True
+
+    def check_cohort_allele_freqs(self, opencga_variants, reference_fpath, r_squared):
+        # Getting cohort variant allele frequencies from opencga
+        variant_id_list = []
+        opencga_cohort_freqs = {}
+        for variant_data in self.get_item(opencga_variants):
+            variant_id = 'chr{}:{}:{}:{}'.format(variant_data['chromosome'], variant_data['start'],
+                                                 variant_data['reference'], variant_data['alternate'])
+            variant_id_list.append(variant_id)
+            opencga_cohort_freqs[variant_id] = {cohort_data['cohortId']: cohort_data['altAlleleFreq']
+                                                for cohort_data in variant_data['studies'][0]['stats']
+                                                if cohort_data['cohortId'] in ['EUR', 'EAS', 'AMR', 'SAS', 'AFR']}
+
+        # Getting cohort variant allele frequencies from reference file
+        reference_fpath = os.path.realpath(os.path.expanduser(reference_fpath))
+        reference_fhand = open(reference_fpath, 'r')
+        reference_fhand.readline()  # Skip header
+        reference_cohort_freqs = {}
+        for line in reference_fhand:
+            variant_id, cohort, cohort_freq = line.split()
+            reference_cohort_freqs.setdefault(variant_id, {}).update({cohort: cohort_freq})
+
+        # Writing allele frequencies
+        cohort_freqs_fpath = os.path.join(self.current.output_dir, 'cohort_freqs_comparison.tsv')
+        cohort_freqs_fhand = open(cohort_freqs_fpath, 'w')
+        cohort_freqs_fhand.write('\t'.join(['id', 'opencga', 'reference', 'cohort']) + '\n')
+        for id_ in variant_id_list:
+            if id_ in opencga_cohort_freqs and id_ in reference_cohort_freqs:
+                for cohort in ['EUR', 'EAS', 'AMR', 'SAS', 'AFR']:
+                    line = '\t'.join(map(str, [id_, opencga_cohort_freqs[id_][cohort],
+                                               reference_cohort_freqs[id_][cohort], cohort]))
+                    cohort_freqs_fhand.write(line + '\n')
+        cohort_freqs_fhand.close()
+
+        # Plotting regression line
+        r_linreg = plot_regression_line(input_fpath=cohort_freqs_fpath,
+                                        output_fpath=os.path.join(self.current.output_dir, 'linreg.png'))
+
+        if float(r_linreg) <= float(r_squared):
+            return False
         return True

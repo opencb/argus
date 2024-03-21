@@ -1,5 +1,6 @@
+import re
 from datetime import datetime
-from dargus.utils import json_to_html
+from dargus.utils import json_to_html, get_argus_version
 
 
 class ValidationResult:
@@ -18,10 +19,10 @@ class ValidationResult:
         self.status_code = response.status_code
         self.status = self.get_status(validation)
         self.events = events
-        self.version = None
+        self.argus_version = get_argus_version()
         self.timestamp = int(datetime.now().strftime('%Y%m%d%H%M%S'))
 
-        self.validation_bool_to_str()
+        self.format_validation()
 
     @staticmethod
     def get_headers(headers):
@@ -40,9 +41,18 @@ class ValidationResult:
             status = False
         return 'PASS' if status is True else 'FAIL'
 
-    def validation_bool_to_str(self):
+    def format_validation(self):
         for v in self.validation:
+            # Converting boolean values
             v['result'] = 'PASS' if v['result'] else 'FAIL'
+
+            # Splitting function name and params
+            validation_function_parts = re.search(r'^(.+?)\((.*)\)$', v['function'])
+            if validation_function_parts:
+                v['function'] = validation_function_parts.group(1)
+                v['params'] = validation_function_parts.group(2)
+            else:
+                v['params'] = None
 
     def to_json(self):
         return self.__dict__
