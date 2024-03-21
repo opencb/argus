@@ -1,0 +1,22 @@
+name: test-export
+tests:
+  - id: aggregate_export
+    path: /analysis/variant/export/run
+    method: POST
+    async: true
+    steps:
+      - id: export_all_samples
+        queryParams:
+          study: 1000G
+        bodyParams:
+          limit: 1000
+          outputFileName: test_export
+          ct: missense_variant,stop_lost
+          includeSample: none
+        bodyMatrixParams:
+          outputFileFormat: [VCF, JSON]
+        validation:
+          results:
+            - is_not_empty('responses[0].results[0].output')
+            - store('responses[0].results[0].output[0].id', <export_fid>)
+            - opencga_download(<export_fid>)
