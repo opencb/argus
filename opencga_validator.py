@@ -137,7 +137,7 @@ class OpencgaValidator(Validator):
             base_url = self.current.base_url
 
         # Querying the endpoint and storing the response internally
-        response = requests.get(url=base_url + path, headers=self._current.tests[0].headers)
+        response = requests.get(url=base_url + path, headers=self.current.tests[0].headers)
         self._stored_values[variable_name] = response.json()
 
         return True
