@@ -14,7 +14,7 @@ class OpencgaValidator(Validator):
     def __init__(self, config):
         super().__init__(config=config)
 
-    def login(self):
+    def login(self, verbose=True):
         # Getting authorisation token from config
         auth_token = None
         if 'authentication' in self._config and self._config['authentication'] is not None:
@@ -27,7 +27,9 @@ class OpencgaValidator(Validator):
                     url = create_url(url=auth_info['url'],
                                      path_params=auth_info.get('pathParams'),
                                      query_params=auth_info.get('queryParams'))
-                    LOGGER.debug('Logging in: {} {} {}'.format(auth_info.get('method'), url, auth_info.get('bodyParams')))
+                    if verbose:
+                        msg = 'Logging in: {} {} {}'.format(auth_info.get('method'), url, auth_info.get('bodyParams'))
+                        LOGGER.debug(msg)
                     response = query(url,
                                      method=auth_info.get('method'),
                                      headers=auth_info.get('headers'),
@@ -107,7 +109,7 @@ class OpencgaValidator(Validator):
             if self.check_job_status(job_res_json):
                 break
             time.sleep(self.validation['asyncRetryTime'])
-            self.login()
+            self.login(verbose=False)
         return job_response
 
     def file_exists(self, files, fname_list):
