@@ -13,8 +13,7 @@ from dargus.test import Test
 from dargus.step import Step
 from dargus.validator import Validator
 from dargus.validation_result import ValidationResult
-from dargus.utils import get_item_from_json, create_url, replace_random_vars, replace_variables
-from dargus.commons import query
+from dargus.utils import create_url, replace_random_vars, replace_variables, query
 
 
 LOGGER = logging.getLogger('argus_logger')
@@ -31,10 +30,7 @@ class Argus:
         self.test_ids = []
         self.step_ids = []
 
-        self.auth_token = None
         self.validation_results = []
-
-        self._generate_token()
 
         # Loading validator
         if 'validator' in self.config and self.config['validator'] is not None:
@@ -47,32 +43,15 @@ class Argus:
             foo = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(foo)
             validator_class = getattr(foo, cls_name)
-            self.validator = validator_class(config=self.config, auth_token=self.auth_token)
+            self.validator = validator_class(config=self.config)
         else:
-            self.validator = Validator(config=self.config, auth_token=self.auth_token)
+            self.validator = Validator(config=self.config)
+
+        # Logging in
+        self.validator.login()
 
         # Parsing validation files
         self._parse_files(self.config['suiteDir'])  # files must be parsed after validator logs in
-
-    @staticmethod
-    def _login(auth, field):
-        url = create_url(url=auth['url'], path_params=auth.get('pathParams'), query_params=auth.get('queryParams'))
-        LOGGER.debug('Logging in: {} {} {}'.format(auth.get('method'), url, auth.get('bodyParams')))
-        response = query(url, method=auth.get('method'), headers=auth.get('headers'), body=auth.get('bodyParams'))
-        auth_token = get_item_from_json(response.json(), field)
-        return auth_token
-
-    def _generate_token(self):
-        if 'authentication' in self.config and self.config['authentication'] is not None:
-            authentication = self.config['authentication']
-            token_func = re.findall(r'^(.+)\((.+)\)$', authentication['token'])
-            if token_func:
-                if token_func[0][0] == 'env':
-                    self.auth_token = os.environ[token_func[1]]
-                elif token_func[0][0] == 'login':
-                    self.auth_token = self._login(authentication, token_func[0][1])
-            else:
-                self.auth_token = authentication['token']
 
     def _select_suites_to_run(self, fpaths):
         selected_suites = []
@@ -190,8 +169,6 @@ class Argus:
             headers.update(self.config['headers'])
         if test.get('headers'):
             headers.update(test.get('headers'))
-        if self.auth_token:
-            headers['Authorization'] = 'Bearer {}'.format(self.auth_token)
 
         steps = []
         for step in test.get('steps'):
@@ -324,7 +301,7 @@ class Argus:
 
     def _get_validation_results(self, response, current, url, headers):
         # Validating response
-        validation = []
+        validation = None
         if not current.tests[0].async_:  # Non-asynchronous queries
             response_is_valid, events = self.validator.validate_response(response)
             if response_is_valid:
@@ -408,10 +385,7 @@ class Argus:
                     else:  # Asynchronous queries
                         response = self.validator.get_async_response_for_validation(
                             response=query(url=url, method=method, headers=headers, body=body),
-                            current=current,
-                            url=url, method=method,
-                            headers=headers,
-                            auth_token=self.auth_token
+                            current=current
                         )
 
                     # Validating results
