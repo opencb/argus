@@ -12,6 +12,7 @@ class Validator:
         self.current = None
         self._step = None
         self._stored_values = {}
+        self.id_ = None
 
         self.validation = self.get_default_validation()
         if self._config.get('validation') is not None:
@@ -47,17 +48,11 @@ class Validator:
         return any(re.findall(regex, field_value))
 
     def is_not_empty(self, field):
-        try:
-            field_value = self.get_item(field)
-        except (TypeError, KeyError, IndexError):
-            return False
+        field_value = self.get_item(field)
         return bool(field_value)
 
     def is_empty(self, field):
-        try:
-            field_value = self.get_item(field)
-        except (TypeError, KeyError, IndexError):
-            return False
+        field_value = self.get_item(field)
         return not bool(field_value)
 
     def list_length(self, field, value, operator='eq'):
@@ -86,7 +81,7 @@ class Validator:
         value = 'lambda ' + value.replace('->', ':')
         return value
 
-    def list_apply(self, field, value, all_=False):
+    def list_apply(self, field, value, all_=True):
         field_value = self.get_item(field)
         lambda_function = self._to_python_lambda(value)
         res = [eval(lambda_function, {'self': self})(i) for i in field_value]
@@ -97,7 +92,7 @@ class Validator:
 
     def list_equals(self, field, value, is_sorted=True):
         field_value = self.get_item(field)
-        if len(field) != len(value):
+        if len(field_value) != len(value):
             return False
         if is_sorted:
             return field_value == value
@@ -186,6 +181,7 @@ class Validator:
         self._rest_response_json = response.json()
         self.current = current
         self._step = self.current.tests[0].steps[0]
+        self.id_ = '.'.join([self.current.id_, self.current.tests[0].id_, self.current.tests[0].steps[0].id_])
         results = []
 
         # Time
@@ -235,4 +231,7 @@ class Validator:
         pass
 
     def run_after_async_validation(self, response, current):
+        pass
+
+    def login(self):
         pass
