@@ -1,7 +1,11 @@
 import re
+import json
+import logging
 
 from dargus.utils import get_item_from_json, dot2python, num_compare
 from dargus.argus_exceptions import ValidationError
+
+LOGGER = logging.getLogger('argus_logger')
 
 
 class Validator:
@@ -92,12 +96,7 @@ class Validator:
 
     def list_equals(self, field, value, is_sorted=True):
         field_value = self.get_item(field)
-        if len(field_value) != len(value):
-            return False
-        if is_sorted:
-            return field_value == value
-        else:
-            return sorted(field_value) == sorted(value)
+        return field_value == value if is_sorted else sorted(field_value) == sorted(value)
 
     def list_intersect(self, field, value, all_intersect=True):
         field_value = self.get_item(field)
@@ -112,34 +111,34 @@ class Validator:
 
     def dict_equals(self, field, value):
         field_value = self.get_item(field)
-        if len(field) != len(value):
-            return False
-        else:
-            return field_value == value
+        try:
+            value = json.loads(value)
+        except json.decoder.JSONDecodeError as e:
+            msg = 'Value "{}" cannot be parsed as a dictionary. Reason: "{}: {}".'
+            LOGGER.error(msg.format(value, type(e).__name__, e))
+            raise e
+        return field_value == value
 
     def store(self, field, variable_name):
         field_value = self.get_item(field)
         self._stored_values[variable_name] = field_value
         return True
 
-    def _is_defined(self, method_name):
-        return method_name in dir(self)
-
     def _validate_results(self, methods, exclude=None):
         results = []
         for method in methods:
             method_parts = re.search(r'^(.+?)\((.*)\)$', method)
-            name = method_parts.group(1)
-            args = method_parts.group(2)
+            method_name = method_parts.group(1)
+            method_args = method_parts.group(2)
 
-            if name in exclude:
+            if exclude and method_name in exclude:
                 continue
 
-            if not self._is_defined(name):
+            if method_name not in dir(self):
                 msg = 'Validation method "{}" not defined'
-                raise AttributeError(msg.format(name))
+                raise AttributeError(msg.format(method_name))
 
-            result = eval('self.{}({})'.format(name, args))
+            result = eval('self.{}({})'.format(method_name, method_args))
 
             # Raise error if failOnFirst is True
             if self.validation['failOnFirst'] and not result:
@@ -157,17 +156,18 @@ class Validator:
         request_time = self._rest_response.elapsed.total_seconds()
         time_deviation = self.validation['timeDeviation']
         max_time = step_time + time_deviation
-        min_time = min(0, abs(step_time - time_deviation))
-        if not min_time < request_time < max_time:
+        min_time = max(0, abs(step_time - time_deviation))
+        if not min_time <= request_time <= max_time:
             return False
         return True
 
     def validate_headers(self, step_headers, exclude=None):
         for key in step_headers.keys():
-            if key not in exclude and (
-                    key not in self._rest_response.headers.keys() or
-                    self._rest_response.headers[key] != step_headers[key]
-            ):
+            if exclude and key in exclude:
+                continue
+            if key not in self._rest_response.headers.keys():
+                return False
+            elif self._rest_response.headers[key] != step_headers[key]:
                 return False
         return True
 
