@@ -5,6 +5,7 @@ import time
 import logging
 import gzip
 import json
+import random
 
 from dargus.validator import Validator
 from dargus.utils import create_url, query, get_item_from_json, num_compare, plot_regression_line
@@ -168,6 +169,8 @@ class OpencgaValidator(Validator):
             for chunk in response.iter_content(chunk_size=10 * 1024):
                 file.write(chunk)
 
+        return os.path.isfile(export_fpath)
+
     def check_cohort_allele_freqs(self, opencga_variants, reference_fpath, r_squared):
         # Getting cohort variant allele frequencies from opencga
         variant_id_list = []
@@ -222,13 +225,19 @@ class OpencgaValidator(Validator):
             # TODO Create a vcf2json function to validate VCF and JSON at the same time
             return False
 
+        # Checking file is not empty
+        observed_count = sum(1 for line in json_fhand)
+        json_fhand.seek(0)
+        if observed_count == 0:
+            LOGGER.warning('File "{}" contains no variants'.format(export_fpath))
+            return False
+
         # Initializing variant summary with variant IDs to contain validation for each variant
         var_summary = {json.loads(line)['id']: {} for line in json_fhand}
         json_fhand.seek(0)  # Returning file handle to the first line
 
         # Checking number of variants returned
         if 'limit' in body_params:
-            observed_count = sum(1 for line in json_fhand)
             expected_count = body_params['limit']
             summary['count'] = True if expected_count == observed_count else False
             json_fhand.seek(0)  # Returning file handle to the first line
@@ -400,7 +409,7 @@ class OpencgaValidator(Validator):
         # Creating variant summary
         variant_summary_fpath = os.path.join(self.current.output_dir, self.id_ + '.variant_summary.tsv')
         variant_summary_fhand = open(variant_summary_fpath, 'w')
-        header_keys = ['id'] + list(var_summary[next(iter(var_summary))].keys())
+        header_keys = ['id'] + list(var_summary[random.choice(list(var_summary.keys()))].keys())
         variant_summary_fhand.write('\t'.join(header_keys) + '\n')  # Header
         for variant in var_summary:
             line = '\t'.join([variant] + [str(var_summary[variant][k]) for k in header_keys if k != 'id']) + '\n'
