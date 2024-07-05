@@ -239,7 +239,7 @@ class OpencgaValidator(Validator):
         # Checking number of variants returned
         if 'limit' in body_params:
             expected_count = body_params['limit']
-            summary['count'] = True if expected_count == observed_count else False
+            summary['count'] = True if expected_count >= observed_count else False
             json_fhand.seek(0)  # Returning file handle to the first line
 
         # Checking consequence types
@@ -304,7 +304,7 @@ class OpencgaValidator(Validator):
             if expected_samples:  # If sample is specified (e.g. HG0097:DP>200;GT=1/1)
                 expected_sd = re.split('[,;]*[a-zA-Z0-9_.]+:', body_params['sampleData'])[1:]
             else:  # If no sample is specified (e.g. DP>200;GT=1/1), all samples from "sample" filter are used
-                sample_groups = re.split('[,;](?!\d[/|]\d)', body_params['sample'])
+                sample_groups = re.split('[,;](?!\\d[/|]\\d)', body_params['sample'])
                 expected_samples = [re.findall('^([a-zA-Z0-9_.]+)', sample_group)[0] for sample_group in sample_groups]
                 expected_sd = [body_params['sampleData']]*len(expected_samples)
             expected_sample_data = [item.split(';') for item in expected_sd]
