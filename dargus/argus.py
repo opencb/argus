@@ -299,7 +299,7 @@ class Argus:
 
         return list(filter(None, steps))
 
-    def _get_validation_results(self, response, current, url, headers):
+    def _get_validation_results(self, response, current, url, headers, job_id=None):
         # Validating response
         validation = None
         if not current.tests[0].async_:  # Non-asynchronous queries
@@ -319,7 +319,8 @@ class Argus:
                               response=response,
                               validation=validation,
                               events=events,
-                              headers=headers)
+                              headers=headers,
+                              job_id=job_id)
         self.validation_results.append(vr)
 
     def _write_output(self, suite):
@@ -381,17 +382,18 @@ class Argus:
                         continue
 
                     # Querying
+                    job_id = None
                     if not current.tests[0].async_:  # Non-asynchronous queries
                         response = query(url=url, method=method, headers=headers, body=body)
                     else:  # Asynchronous queries
-                        response = self.validator.get_async_response_for_validation(
+                        response, job_id = self.validator.get_async_response_for_validation(
                             response=query(url=url, method=method, headers=headers, body=body),
                             current=current
                         )
 
                     # Validating results
                     LOGGER.debug('Validating: Suite "{}"; Test "{}"; Step "{}"'.format(suite.id_, test.id_, step.id_))
-                    self._get_validation_results(response, current, url, headers)
+                    self._get_validation_results(response, current, url, headers, job_id)
 
             # Writing output
             self._write_output(suite)
