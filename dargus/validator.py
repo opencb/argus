@@ -44,7 +44,8 @@ class Validator:
         return field_value
 
     def compare(self, field, value, operator='eq'):
-        field_value = self.get_item(field)
+        field_value = float(self.get_item(field))
+        value = float(value)
         return num_compare(field_value, value, operator)
 
     def match(self, field, regex):
@@ -59,12 +60,29 @@ class Validator:
         field_value = self.get_item(field)
         return not bool(field_value)
 
+    @staticmethod
+    def _string_to_type(value):
+        # Converting string representation of list/dict to a list/dict
+        if type(value) is not str:
+            return value
+        elif value.isdigit():
+            return float(value)
+        else:
+            try:
+                value = json.loads(value)
+            except json.decoder.JSONDecodeError:
+                return value
+        return value
+
     def list_length(self, field, value, operator='eq'):
         field_value = self.get_item(field)
         return num_compare(len(field_value), value, operator)
 
     def list_contains(self, field, value, expected=True):
         field_value = self.get_item(field)
+        if type(expected) is not bool:
+            expected = True if expected.lower() == 'true' else False
+        value = self._string_to_type(value)
         if expected:
             return value in field_value
         else:
@@ -87,6 +105,8 @@ class Validator:
 
     def list_apply(self, field, value, all_=True):
         field_value = self.get_item(field)
+        if type(all_) is not bool:
+            all_ = True if all_.lower() == 'true' else False
         lambda_function = self._to_python_lambda(value)
         res = [eval(lambda_function, {'self': self})(i) for i in field_value]
         if all_:
@@ -96,10 +116,16 @@ class Validator:
 
     def list_equals(self, field, value, is_sorted=True):
         field_value = self.get_item(field)
+        value = self._string_to_type(value)
+        if type(is_sorted) is not bool:
+            is_sorted = True if is_sorted.lower() == 'true' else False
         return field_value == value if is_sorted else sorted(field_value) == sorted(value)
 
     def list_intersect(self, field, value, all_intersect=True):
         field_value = self.get_item(field)
+        value = self._string_to_type(value)
+        if type(all_intersect) is not bool:
+            all_intersect = True if all_intersect.lower() == 'true' else False
         intersection = [item for item in list(value) if item in list(field_value)]
         if intersection == value or ((not all_intersect) and len(intersection) > 0):
             return True
@@ -107,16 +133,13 @@ class Validator:
 
     def list_sorted(self, field, reverse=False):
         field_value = self.get_item(field)
+        if type(reverse) is not bool:
+            reverse = True if reverse.lower() == 'true' else False
         return field_value == sorted(field_value, reverse=reverse)
 
     def dict_equals(self, field, value):
         field_value = self.get_item(field)
-        try:
-            value = json.loads(value)
-        except json.decoder.JSONDecodeError as e:
-            msg = 'Value "{}" cannot be parsed as a dictionary. Reason: "{}: {}".'
-            LOGGER.error(msg.format(value, type(e).__name__, e))
-            raise e
+        value = self._string_to_type(value)
         return field_value == value
 
     def store(self, field, variable_name):
@@ -219,7 +242,7 @@ class Validator:
         return results
 
     def get_async_response_for_validation(self, response, current):
-        return None
+        return None, None
 
     def validate_response(self, response):
         return True, None
