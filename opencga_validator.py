@@ -325,6 +325,8 @@ class OpencgaValidator(Validator):
                         obs_sample_data = observed_sd[variant][sample]
                         for field in exp_sample_data:
                             field_name, symbol, expected_value = re.findall('([a-zA-Z0-9_.]+)([><=]+)(.+)', field)[0]
+                            if field_name not in obs_sample_data:
+                                continue
                             observed_value = obs_sample_data[field_name]
                             if symbol == '=':  # e.g. DP=20
                                 symbol = '=='
@@ -358,7 +360,7 @@ class OpencgaValidator(Validator):
         # Checking file
         if 'file' in body_params:
             expected_files = body_params['file'].split(',')
-            for variant in observed_sd:
+            for variant in observed_fd:
                 var_summary[variant]['file'] = all([file in observed_fd[variant].keys() for file in expected_files])
             summary['file'] = all([var_summary[v]['file'] for v in var_summary])
 
@@ -391,6 +393,8 @@ class OpencgaValidator(Validator):
                         obs_file_data = observed_fd[variant][file]
                         for field in exp_file_data:
                             field_name, symbol, expected_value = re.findall('([a-zA-Z0-9_.]+)([><=]+)(.+)', field)[0]
+                            if field_name not in obs_file_data:
+                                continue
                             observed_value = obs_file_data[field_name]
                             if symbol == '=':  # e.g. FILTER=PASS
                                 symbol = '=='
