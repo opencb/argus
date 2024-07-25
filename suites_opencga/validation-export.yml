@@ -16,7 +16,9 @@ tests:
         bodyMatrixParams:
           sample: ['NA12877', 'NA12877:0/1;NA12889:1/1;NA12890:0/0']
           sampleData: ['NA12877:DP>20']
-          outputFileFormat: [VCF, JSON]
+          file: ['NA12877_S1.genome.vcf.gz', 'NA12877_S1.genome.vcf.gz,NA12890_S1.genome.vcf.gz']
+          fileData: ['QUAL>30']
+          outputFileFormat: ['JSON']
         validation:
           results:
             - is_not_empty('responses[0].results[0].output')
@@ -32,7 +34,7 @@ tests:
           ct: missense_variant,stop_lost
           includeSample: none
         bodyMatrixParams:
-          outputFileFormat: [JSON]
+          outputFileFormat: ['JSON']
         validation:
           results:
             - is_not_empty('responses[0].results[0].output')
