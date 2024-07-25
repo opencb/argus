@@ -48,11 +48,15 @@ class OpencgaValidator(Validator):
 
     def validate_response(self, response):
         if response is None:
-            return False, 'The webservice returned an empty response'
+            msg = 'The webservice returned an empty response'
+            LOGGER.error(msg)
+            return False, msg
         try:
             response_json = response.json()
         except requests.exceptions.JSONDecodeError:
-            return False, 'The webservice is not responding with a proper JSON'
+            msg = 'The webservice is not responding with a proper JSON: "{}"'.format(response.content)
+            LOGGER.error(msg)
+            return False, msg
         events = []
         if 'events' in response_json and response_json['events']:
             events = response_json['events']
@@ -67,16 +71,28 @@ class OpencgaValidator(Validator):
 
     def validate_async_response(self, async_response):
         if async_response is None:
-            return False, 'The webservice returned an empty response'
+            msg = 'The webservice returned an empty response'
+            LOGGER.error(msg)
+            return False, msg
         try:
             async_response_json = async_response.json()
         except requests.exceptions.JSONDecodeError:
-            return False, 'The webservice is not responding with a proper JSON'
-        async_response_json = async_response_json['responses'][0]['results'][0]
-        if async_response_json['internal']['status']['id'] in ['ABORTED', 'ERROR']:
-            event = async_response_json['execution']['events'][0]['message']
-            LOGGER.error('Event: "{}"'.format(event))
-            return False, event
+            msg = 'The webservice is not responding with a proper JSON: "{}"'.format(async_response.content)
+            LOGGER.error(msg)
+            return False, msg
+        events = []
+        # Catching ASYNC QUERIES not called properly, e.g. "HTTP 404 Not Found"
+        if 'events' in async_response_json and async_response_json['events']:
+            events = async_response_json['events']
+        # Catching JOBS that failed
+        async_response_results = async_response_json['responses'][0]['results']
+        if async_response_results and async_response_results[0]['internal']['status']['id'] in ['ABORTED', 'ERROR']:
+            events = async_response_results[0]['execution']['events']
+        if events:
+            for event in events:
+                if event['type'] == 'ERROR':
+                    LOGGER.error('Event: "{}"'.format(event))
+                    return False, events
         return True, None
 
     @staticmethod
@@ -95,14 +111,19 @@ class OpencgaValidator(Validator):
         return True
 
     def get_async_response_for_validation(self, response, current):
-        res_json = response.json()
+        # Checking if async query is called properly, e.g. "HTTP 404 Not Found"
+        response_is_valid, events = self.validate_response(response)
+        if not response_is_valid:
+            return response
 
         # Waiting for job to end so it can be validated
+        res_json = response.json()
         while True:
             # Getting job info
+            job_id = res_json['responses'][0]['results'][0]['id']
             job_response = self.get_job_info(
                 study_id=res_json['responses'][0]['results'][0]['study']['id'],
-                job_id=res_json['responses'][0]['results'][0]['id'],
+                job_id=job_id,
                 base_url=current.base_url,
                 headers=current.tests[0].headers
             )
@@ -113,7 +134,7 @@ class OpencgaValidator(Validator):
                 break
             time.sleep(self.validation['asyncRetryTime'])
             self.login(verbose=False)
-        return job_response
+        return job_response, job_id
 
     def file_exists(self, files, fname_list):
         files_value = self.get_item(files)
@@ -325,6 +346,8 @@ class OpencgaValidator(Validator):
                         obs_sample_data = observed_sd[variant][sample]
                         for field in exp_sample_data:
                             field_name, symbol, expected_value = re.findall('([a-zA-Z0-9_.]+)([><=]+)(.+)', field)[0]
+                            if field_name not in obs_sample_data:
+                                continue
                             observed_value = obs_sample_data[field_name]
                             if symbol == '=':  # e.g. DP=20
                                 symbol = '=='
@@ -358,7 +381,7 @@ class OpencgaValidator(Validator):
         # Checking file
         if 'file' in body_params:
             expected_files = body_params['file'].split(',')
-            for variant in observed_sd:
+            for variant in observed_fd:
                 var_summary[variant]['file'] = all([file in observed_fd[variant].keys() for file in expected_files])
             summary['file'] = all([var_summary[v]['file'] for v in var_summary])
 
@@ -391,6 +414,8 @@ class OpencgaValidator(Validator):
                         obs_file_data = observed_fd[variant][file]
                         for field in exp_file_data:
                             field_name, symbol, expected_value = re.findall('([a-zA-Z0-9_.]+)([><=]+)(.+)', field)[0]
+                            if field_name not in obs_file_data:
+                                continue
                             observed_value = obs_file_data[field_name]
                             if symbol == '=':  # e.g. FILTER=PASS
                                 symbol = '=='
