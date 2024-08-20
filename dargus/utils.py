@@ -19,18 +19,19 @@ LOGGER = logging.getLogger('argus_logger')
 def get_item_from_json(json_dict, field):
     json_traceback = json_dict.copy()
     try:
-        for item in field.split('.'):
-            items = list(filter(None, re.split(r'[\[\]]', item)))
-            key, indexes = items[0], map(int, items[1:])
-            json_dict = json_dict[key]
-            if indexes:
-                for i in indexes:
-                    json_dict = json_dict[i]
+        if field:
+            for item in field.split('.'):
+                items = list(filter(None, re.split(r'[\[\]]', item)))
+                key, indexes = items[0], map(int, items[1:])
+                json_dict = json_dict[key]
+                if indexes:
+                    for i in indexes:
+                        json_dict = json_dict[i]
         return json_dict
-    except IndexError as e:
-        msg = 'Unable to retrieve field "{}" from JSON "{}". Reason: "{}".'
-        LOGGER.error(msg.format(field, json_traceback, e))
-        raise IndexError(e)
+    except (IndexError, KeyError) as e:
+        msg = 'Unable to retrieve field "{}" from JSON "{}". Reason: "{}: {}".'
+        LOGGER.error(msg.format(field, json_traceback, type(e).__name__, e))
+        raise e
 
 
 def dot2python(field):
@@ -64,6 +65,8 @@ def create_url(url, path_params, query_params):
 
 
 def query(url, method='GET', headers=None, body=None):
+    if not method:
+        method = 'get'
     if method.lower() == 'get':
         response = requests.get(url, headers=headers)
     elif method.lower() == 'post':

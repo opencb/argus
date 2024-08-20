@@ -1,0 +1,43 @@
+name: validation-export
+tests:
+  - id: export
+    path: /analysis/variant/export/run
+    method: POST
+    async: true
+    steps:
+      - id: export_platinum
+        queryParams:
+          study: germline:platinum
+        bodyParams:
+          limit: 10
+          outputFileName: platinum_export
+          includeSampleId: True
+          ct: missense_variant,stop_lost
+        bodyMatrixParams:
+          sample: ['NA12877', 'NA12877:0/1;NA12889:1/1;NA12890:0/0']
+          sampleData: ['NA12877:DP>20']
+          file: ['NA12877_S1.genome.vcf.gz', 'NA12877_S1.genome.vcf.gz,NA12890_S1.genome.vcf.gz']
+          fileData: ['QUAL>30']
+          outputFileFormat: ['JSON']
+        validation:
+          results:
+            - is_not_empty('responses[0].results[0].output')
+            - store('responses[0].results[0].output[0].id', '$export_fid')
+            - opencga_download('germline:platinum', '$export_fid')
+            - check_export_file('$export_fid')
+      - id: export_1000G
+        queryParams:
+          study: population:1000G
+        bodyParams:
+          limit: 10
+          outputFileName: 1000G_export
+          ct: missense_variant,stop_lost
+          includeSample: none
+        bodyMatrixParams:
+          outputFileFormat: ['JSON']
+        validation:
+          results:
+            - is_not_empty('responses[0].results[0].output')
+            - store('responses[0].results[0].output[0].id', '$export_fid')
+            - opencga_download('population:1000G', '$export_fid')
+            - check_export_file('$export_fid')

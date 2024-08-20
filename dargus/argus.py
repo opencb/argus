@@ -367,6 +367,7 @@ class Argus:
                                                    current.tests[0].path.strip('/')]),
                                      path_params=current.tests[0].steps[0].path_params,
                                      query_params=current.tests[0].steps[0].query_params)
+                    current.tests[0].steps[0].url = url
                     method = current.tests[0].method
                     headers = current.tests[0].headers
                     body = current.tests[0].steps[0].body_params

@@ -9,18 +9,18 @@ class ValidationResult:
         self.test_id = current.tests[0].id_
         self.step_id = current.tests[0].steps[0].id_
         self.url = url
-        self.validation = validation
+        self.params = self.get_params(current)
         self.headers = self.get_headers(headers)
-        self.tags = current.tests[0].tags
         self.method = current.tests[0].method
         self.async_ = current.tests[0].async_
-        self.time = response.elapsed.total_seconds()
-        self.params = current.tests[0].steps[0].query_params
+        self.tags = current.tests[0].tags
         self.status_code = response.status_code
-        self.status = self.get_status(validation)
+        self.time = response.elapsed.total_seconds()
+        self.validation = validation
         self.events = events
-        self.argus_version = get_argus_version()
+        self.status = self.get_status(validation)
         self.timestamp = int(datetime.now().strftime('%Y%m%d%H%M%S'))
+        self.argus_version = get_argus_version()
 
         self.format_validation()
 
@@ -31,6 +31,15 @@ class ValidationResult:
             new_headers = headers.copy()
             new_headers['Authorization'] = 'REDACTED'
         return new_headers
+
+    @staticmethod
+    def get_params(current):
+        params = {
+            'path_params': current.tests[0].steps[0].path_params,
+            'query_params': current.tests[0].steps[0].query_params,
+            'body_params': current.tests[0].steps[0].body_params
+        }
+        return params
 
     @staticmethod
     def get_status(validation):
