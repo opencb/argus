@@ -4,7 +4,7 @@ from dargus.utils import json_to_html, get_argus_version
 
 
 class ValidationResult:
-    def __init__(self, current, url, response, validation, events=None, headers=None):
+    def __init__(self, current, url, response, validation, events=None, headers=None, job_id=None):
         self.suite_id = current.id_
         self.test_id = current.tests[0].id_
         self.step_id = current.tests[0].steps[0].id_
@@ -14,6 +14,7 @@ class ValidationResult:
         self.method = current.tests[0].method
         self.async_ = current.tests[0].async_
         self.tags = current.tests[0].tags
+        self.job_id = job_id
         self.status_code = response.status_code
         self.time = response.elapsed.total_seconds()
         self.validation = validation

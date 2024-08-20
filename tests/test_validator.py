@@ -119,33 +119,45 @@ class TestValidator(unittest.TestCase):
         self.assertFalse(self.validator.is_empty('<stored_key>.responses[0].results[0].k1'))
         self.assertTrue(self.validator.is_empty('<stored_key>.responses[0].results[0].k2'))
 
+    def test_string_to_type(self):
+        self.assertTrue(self.validator._string_to_type('abc'), 'abc')
+        self.assertTrue(self.validator._string_to_type('1'), 1)
+        self.assertTrue(self.validator._string_to_type('1.05'), 1.05)
+        self.assertTrue(self.validator._string_to_type('[1, 2, 3]'), [1, 2, 3])
+        self.assertTrue(self.validator._string_to_type('{"k1": "v1", "k2": [1, 2, 3]}'), {'k1': 'v1', 'k2': [1, 2, 3]})
+
     def test_list_length(self):
         self.validator._rest_response_json = {'responses': [{'results': [{'k1': [1, 2, 3], 'k2': []}]}]}
         self.validator._stored_values = {'stored_key': self.validator._rest_response_json}
 
         # Comparing list lengths
         self.assertTrue(self.validator.list_length('responses[0].results[0].k1', 3, 'eq'))
-        self.assertTrue(self.validator.list_length('responses[0].results[0].k2', 0, 'eq'))
-        self.assertFalse(self.validator.list_length('responses[0].results[0].k1', 3, 'ne'))
+        self.assertTrue(self.validator.list_length('responses[0].results[0].k1', '3', 'eq'))
+        self.assertTrue(self.validator.list_length('responses[0].results[0].k2', '0', 'eq'))
+        self.assertFalse(self.validator.list_length('responses[0].results[0].k1', '3', 'ne'))
 
         # Comparing stored list lengths
-        self.assertTrue(self.validator.list_length('<stored_key>.responses[0].results[0].k1', 3, 'eq'))
-        self.assertTrue(self.validator.list_length('<stored_key>.responses[0].results[0].k2', 0, 'eq'))
-        self.assertFalse(self.validator.list_length('<stored_key>.responses[0].results[0].k1', 3, 'ne'))
+        self.assertTrue(self.validator.list_length('<stored_key>.responses[0].results[0].k1', '3', 'eq'))
+        self.assertTrue(self.validator.list_length('<stored_key>.responses[0].results[0].k2', '0', 'eq'))
+        self.assertFalse(self.validator.list_length('<stored_key>.responses[0].results[0].k1', '3', 'ne'))
 
     def test_list_contains(self):
-        self.validator._rest_response_json = {'responses': [{'results': [{'k1': [1, 2, 3], 'k2': []}]}]}
+        self.validator._rest_response_json = {'responses': [{'results': [{'k1': [1, 2, 3], 'k2': ['A']}]}]}
         self.validator._stored_values = {'stored_key': self.validator._rest_response_json}
 
         # Checking list elements
         self.assertTrue(self.validator.list_contains('responses[0].results[0].k1', 1))
-        self.assertTrue(self.validator.list_contains('responses[0].results[0].k2', 0, expected=False))
-        self.assertFalse(self.validator.list_contains('responses[0].results[0].k2', 3))
+        self.assertTrue(self.validator.list_contains('responses[0].results[0].k1', '1'))
+        self.assertTrue(self.validator.list_contains('responses[0].results[0].k2', 'A'))
+        self.assertTrue(self.validator.list_contains('responses[0].results[0].k2', '0', expected=False))
+        self.assertTrue(self.validator.list_contains('responses[0].results[0].k2', '0', expected='False'))
+        self.assertFalse(self.validator.list_contains('responses[0].results[0].k2', '3'))
 
         # Checking stored list elements
-        self.assertTrue(self.validator.list_contains('<stored_key>.responses[0].results[0].k1', 1))
-        self.assertTrue(self.validator.list_contains('<stored_key>.responses[0].results[0].k2', 0, expected=False))
-        self.assertFalse(self.validator.list_contains('<stored_key>.responses[0].results[0].k2', 3))
+        self.assertTrue(self.validator.list_contains('<stored_key>.responses[0].results[0].k1', '1'))
+        self.assertTrue(self.validator.list_contains('<stored_key>.responses[0].results[0].k2', '0', expected=False))
+        self.assertTrue(self.validator.list_contains('<stored_key>.responses[0].results[0].k2', '0', expected='False'))
+        self.assertFalse(self.validator.list_contains('<stored_key>.responses[0].results[0].k2', '3'))
 
     def test_to_python_lambda(self):
         # Convert java lambda and not dot notation to python lambda and python notation
@@ -166,6 +178,7 @@ class TestValidator(unittest.TestCase):
         self.assertTrue(self.validator.list_apply('responses[0].results[0].k1', 'v -> type(v) == int'))
         self.assertFalse(self.validator.list_apply('responses[0].results[0].k2', 'v -> type(v) == int'))
         self.assertTrue(self.validator.list_apply('responses[0].results[0].k2', 'v -> type(v) == int', all_=False))
+        self.assertTrue(self.validator.list_apply('responses[0].results[0].k2', 'v -> type(v) == int', all_='False'))
         self.assertTrue(self.validator.list_apply('responses[0].results[0].k3', "v -> int(v.k3_1[0]) <= 10"))
         self.assertTrue(self.validator.list_apply('responses[0].results[0].k3', "v -> int(v.k3_1[1]) <= 10"))
         self.assertFalse(self.validator.list_apply('responses[0].results[0].k3', "v -> int(v.k3_1[2]) <= 10"))
@@ -180,15 +193,17 @@ class TestValidator(unittest.TestCase):
 
         # Comparing list elements
         self.assertTrue(self.validator.list_equals('responses[0].results[0].k1', [1, 2, 3]))
-        self.assertFalse(self.validator.list_equals('responses[0].results[0].k1', [2, 1, 3]))
-        self.assertTrue(self.validator.list_equals('responses[0].results[0].k1', [2, 1, 3], is_sorted=False))
-        self.assertFalse(self.validator.list_equals('responses[0].results[0].k2', [2, 3, 4]))
-        self.assertFalse(self.validator.list_equals('responses[0].results[0].k2', [2]))
+        self.assertTrue(self.validator.list_equals('responses[0].results[0].k1', '[1, 2, 3]'))
+        self.assertFalse(self.validator.list_equals('responses[0].results[0].k1', '[2, 1, 3]'))
+        self.assertTrue(self.validator.list_equals('responses[0].results[0].k1', '[2, 1, 3]', is_sorted=False))
+        self.assertTrue(self.validator.list_equals('responses[0].results[0].k1', '[2, 1, 3]', is_sorted='False'))
+        self.assertFalse(self.validator.list_equals('responses[0].results[0].k2', '[2, 3, 4]'))
+        self.assertFalse(self.validator.list_equals('responses[0].results[0].k2', '[2]'))
 
         # Comparing stored list elements
-        self.assertTrue(self.validator.list_equals('<stored_key>.responses[0].results[0].k1', [1, 2, 3]))
-        self.assertFalse(self.validator.list_equals('<stored_key>.responses[0].results[0].k1', [2, 1, 3]))
-        self.assertTrue(self.validator.list_equals('<stored_key>.responses[0].results[0].k1', [2, 1, 3],
+        self.assertTrue(self.validator.list_equals('<stored_key>.responses[0].results[0].k1', '[1, 2, 3]'))
+        self.assertFalse(self.validator.list_equals('<stored_key>.responses[0].results[0].k1', '[2, 1, 3]'))
+        self.assertTrue(self.validator.list_equals('<stored_key>.responses[0].results[0].k1', '[2, 1, 3]',
                                                    is_sorted=False))
 
     def test_list_intersect(self):
@@ -197,13 +212,15 @@ class TestValidator(unittest.TestCase):
 
         # Intersecting lists
         self.assertTrue(self.validator.list_intersect('responses[0].results[0].k1', [1, 2]))
-        self.assertFalse(self.validator.list_intersect('responses[0].results[0].k1', [8, 9]))
-        self.assertTrue(self.validator.list_intersect('responses[0].results[0].k1', [1]))
-        self.assertTrue(self.validator.list_intersect('responses[0].results[0].k1', ['a', 2], all_intersect=False))
+        self.assertTrue(self.validator.list_intersect('responses[0].results[0].k1', '[1, 2]'))
+        self.assertFalse(self.validator.list_intersect('responses[0].results[0].k1', '[8, 9]'))
+        self.assertTrue(self.validator.list_intersect('responses[0].results[0].k1', '[1]'))
+        self.assertTrue(self.validator.list_intersect('responses[0].results[0].k1', '["a", 2]', all_intersect=False))
+        self.assertTrue(self.validator.list_intersect('responses[0].results[0].k1', '["a", 2]', all_intersect='False'))
 
         # Intersecting stored lists
-        self.assertTrue(self.validator.list_intersect('<stored_key>.responses[0].results[0].k1', [1, 2]))
-        self.assertFalse(self.validator.list_intersect('<stored_key>.responses[0].results[0].k1', [8, 9]))
+        self.assertTrue(self.validator.list_intersect('<stored_key>.responses[0].results[0].k1', '[1, 2]'))
+        self.assertFalse(self.validator.list_intersect('<stored_key>.responses[0].results[0].k1', '[8, 9]'))
 
     def test_list_sorted(self):
         self.validator._rest_response_json = {'responses': [{'results': [{'k1': [1, 2, 3], 'k2': [3, 2, 1]}]}]}
@@ -213,6 +230,7 @@ class TestValidator(unittest.TestCase):
         self.assertTrue(self.validator.list_sorted('responses[0].results[0].k1'))
         self.assertFalse(self.validator.list_sorted('responses[0].results[0].k2'))
         self.assertTrue(self.validator.list_sorted('responses[0].results[0].k2', reverse=True))
+        self.assertTrue(self.validator.list_sorted('responses[0].results[0].k2', reverse='True'))
 
         # Checking stored list sorting
         self.assertTrue(self.validator.list_sorted('<stored_key>.responses[0].results[0].k1'))
@@ -225,14 +243,11 @@ class TestValidator(unittest.TestCase):
         # Comparing dicts
         self.assertTrue(self.validator.dict_equals('responses[0].results[0]', '{"k1": [1, 2, 3]}'))
         self.assertFalse(self.validator.dict_equals('responses[0].results[0]', '{"k1": [1, "X", 3]}'))
+        self.assertFalse(self.validator.dict_equals('<stored_key>.responses[0].results[0]', 'not_a_dict'))
 
         # Comparing stored dicts
         self.assertTrue(self.validator.dict_equals('<stored_key>.responses[0].results[0]', '{"k1": [1, 2, 3]}'))
         self.assertFalse(self.validator.dict_equals('<stored_key>.responses[0].results[0]', '{"k1": [1, "X", 3]}'))
-
-        # Raising an error if value is not a dict
-        with self.assertRaises(json.decoder.JSONDecodeError):
-            self.validator.dict_equals('<stored_key>.responses[0].results[0]', 'not_a_dict')
 
     def test_store(self):
         self.validator._rest_response_json = {'responses': [{'results': [{'k1': [1, 2, 3]}]}]}

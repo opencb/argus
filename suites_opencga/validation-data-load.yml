@@ -1,0 +1,179 @@
+name: validation-data-load
+variables:
+  user_id: test
+  project_id: validation3
+  study_id: dataLoad3
+tests:
+  - id: link
+    path: /files/link
+    method: POST
+    async: false
+    steps:
+      - id: wgs_single_sample_vcf-link
+        queryParams:
+          study: ${user_id}@${project_id}:${study_id}
+        bodyParams:
+          uri: /opt/opencga/variants/validation/validation_data_load/NA12878_S1.genome.vcf.gz
+        validation:
+          results:
+            - match('responses[0].results[0].id', 'NA12878_S1.genome.vcf.gz')
+            - list_equals('responses[0].results[0].sampleIds', '["NA12878"]')
+      - id: wgs_single_sample_bam-link
+        queryParams:
+          study: ${user_id}@${project_id}:${study_id}
+        bodyParams:
+          uri: /opt/opencga/variants/validation/validation_data_load/NA12878_S1.bam
+        validation:
+          results:
+            - match('responses[0].results[0].id', 'NA12878_S1.bam')
+  - id: index_bam
+    path: /analysis/alignment/index/run
+    method: POST
+    async: true
+    steps:
+      - id: wgs_single_sample_bam-index
+        queryParams:
+          study: ${user_id}@${project_id}:${study_id}
+        bodyParams:
+          fileId: NA12878_S1.bam
+          overwrite: true
+        validation:
+          results:
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=NA12878_S1.bam.bai', 'file_info')
+            - is_not_empty('<file_info>.responses[0].results')
+  - id: index
+    path: /operation/variant/index
+    method: POST
+    async: true
+    steps:
+      - id: wgs_single_sample_vcf-index
+        queryParams:
+          study: ${user_id}@${project_id}:${study_id}
+        bodyParams:
+          file: NA12878_S1.genome.vcf.gz
+        validation:
+          results:
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=NA12878_S1.genome.vcf.gz&include=internal', 'file_info')
+            - match('<file_info>.responses[0].results[0].internal.variant.index.status.id', 'READY')
+  - id: cellbase_configure
+    path: /operation/cellbase/configure
+    method: POST
+    async: false
+    steps:
+      - id: cellbase_configure
+        queryParams:
+          project: ${project_id}
+        bodyParams:
+          url: https://ws.zettagenomics.com/cellbase
+          version: v5.8
+          dataRelease: 7
+          apiKey: ${cellbaseApiKey}
+        validation:
+          results:
+            - opencga_query('/projects/search?id=${project_id}', 'project_info')
+            - match('<project_info>.responses[0].results[0].cellbase.url', 'https://ws.zettagenomics.com/cellbase')
+            - match('<project_info>.responses[0].results[0].cellbase.version', 'v5.8')
+            - match('<project_info>.responses[0].results[0].cellbase.dataRelease', '7')
+  - id: annotation
+    path: /operation/variant/annotation/index
+    method: POST
+    async: true
+    steps:
+      - id: wgs_single_sample_vcf-annotation
+        queryParams:
+          study: ${user_id}@${project_id}:${study_id}
+        bodyParams: {}
+        validation:
+          results:
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=NA12878_S1.genome.vcf.gz&include=internal', 'file_info')
+            - match('<file_info>.responses[0].results[0].internal.variant.annotationIndex.status.id', 'READY')
+  - id: variant_stats_index
+    path: /operation/variant/stats/index
+    method: POST
+    async: true
+    steps:
+      - id: wgs_single_sample_vcf-variant_stats_index
+        queryParams:
+          study: ${user_id}@${project_id}:${study_id}
+        bodyParams:
+          cohort: ["ALL"]
+        validation:
+          results:
+            - opencga_query('/analysis/variant/query?study=${user_id}@${project_id}:${study_id}&limit=1&skip=0', 'test_variant')
+            - list_length('<test_variant>.responses[0].results[0].studies[0].stats', '1')
+  - id: variant_secondary_annotation_index
+    path: /operation/variant/secondary/annotation/index
+    method: POST
+    async: true
+    steps:
+      - id: wgs_single_sample_vcf-variant_secondary_annotation_index
+        queryParams:
+          study: ${user_id}@${project_id}:${study_id}
+        bodyParams: {}
+        validation:
+          results:
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=NA12878_S1.genome.vcf.gz&include=internal', 'file_info')
+            - match('<file_info>.responses[0].results[0].internal.variant.secondaryAnnotationIndex.status.id', 'READY')
+  - id: variant_secondary_sample_index
+    path: /operation/variant/secondary/sample/index
+    method: POST
+    async: true
+    steps:
+      - id: wgs_single_sample_vcf-variant_secondary_sample_index
+        queryParams:
+          study: ${user_id}@${project_id}:${study_id}
+        bodyParams:
+          sample: ["all"]
+          overwrite: true
+        validation:
+          results:
+            - opencga_query('/samples/search?study=${user_id}@${project_id}:${study_id}&id=NA12878&include=internal', 'sample_info')
+            - match('<sample_info>.responses[0].results[0].internal.variant.secondarySampleIndex.status.id', 'READY')
+  - id: variant_study_delete
+    path: /operation/variant/study/delete
+    method: POST
+    async: true
+    steps:
+      - id: wgs_single_sample_vcf-variant_study_delete
+        queryParams:
+          study: ${user_id}@${project_id}:${study_id}
+        bodyParams: {}
+        validation:
+          results:
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=NA12878_S1.genome.vcf.gz&include=internal', 'file_info')
+            - match('<file_info>.responses[0].results[0].internal.variant.index.status.id', 'NONE')
+  - id: variant_prune
+    path: /operation/variant/prune
+    method: POST
+    async: true
+    steps:
+      - id: wgs_single_sample_vcf-variant_prune
+        bodyParams:
+          project: ${project_id}
+        validation:
+          results:
+            - opencga_query('/analysis/variant/query?study=${user_id}@${project_id}:${study_id}&limit=1&skip=0', 'test_variant')
+            - is_empty('<test_variant>.responses[0].results')
+  - id: unlink
+    path: /files/{files}/unlink
+    method: DELETE
+    async: true
+    steps:
+      - id: wgs_single_sample_vcf-unlink
+        pathParams:
+          files: NA12878_S1.genome.vcf.gz
+        queryParams:
+          study: ${user_id}@${project_id}:${study_id}
+        validation:
+          results:
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=NA12878_S1.genome.vcf.gz', 'file_info')
+            - is_empty('<file_info>.responses[0].results')
+      - id: wgs_single_sample_bam-unlink
+        pathParams:
+          files: NA12878_S1.bam
+        queryParams:
+          study: ${user_id}@${project_id}:${study_id}
+        validation:
+          results:
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=NA12878_S1.bam', 'file_info')
+            - is_empty('<file_info>.responses[0].results')

@@ -1,5 +1,8 @@
 name: validation-cohort
 variables:
+  user_id: test
+  project_id: validation4
+  study_id: cohort
   cohort_del: DEL
 tests:
   - id: cohorts_create
@@ -10,7 +13,7 @@ tests:
     steps:
       - id: EAS
         queryParams:
-          study: 1000G
+          study: ${study_id}
           includeResult: true
         bodyFile: ${INPUT_DIR}/validation-cohort/EAS.json
         validation:
@@ -19,7 +22,7 @@ tests:
             - list_length('responses[0].results[0].samples', '585')
       - id: EUR
         queryParams:
-          study: 1000G
+          study: ${study_id}
           includeResult: true
         bodyFile: ${INPUT_DIR}/validation-cohort/EUR.json
         validation:
@@ -28,7 +31,7 @@ tests:
             - list_length('responses[0].results[0].samples', '633')
       - id: AFR
         queryParams:
-          study: 1000G
+          study: ${study_id}
           includeResult: true
         bodyFile: ${INPUT_DIR}/validation-cohort/AFR.json
         validation:
@@ -37,7 +40,7 @@ tests:
             - list_length('responses[0].results[0].samples', '893')
       - id: AMR
         queryParams:
-          study: 1000G
+          study: ${study_id}
           includeResult: true
         bodyFile: ${INPUT_DIR}/validation-cohort/AMR.json
         validation:
@@ -46,7 +49,7 @@ tests:
             - list_length('responses[0].results[0].samples', '490')
       - id: SAS
         queryParams:
-          study: 1000G
+          study: ${study_id}
           includeResult: true
         bodyFile: ${INPUT_DIR}/validation-cohort/SAS.json
         validation:
@@ -55,7 +58,7 @@ tests:
             - list_length('responses[0].results[0].samples', '601')
       - id: DEL
         queryParams:
-          study: 1000G
+          study: ${study_id}
           includeResult: true
         bodyParams:
           id: ${cohort_del}
@@ -76,12 +79,12 @@ tests:
     steps:
       - id: variant_stats_index
         queryParams:
-          study: 1000G
+          study: ${study_id}
         bodyParams:
           cohort: ["ALL", "EAS", "EUR", "AFR", "AMR", "SAS", "DEL"]
         validation:
           results:
-            - opencga_query('/analysis/variant/query?study=validation@population:1000G&limit=1&skip=0', 'test_variant')
+            - opencga_query('/analysis/variant/query?study=${user_id}@${project_id}:${study_id}&limit=1&skip=0', 'test_variant')
             - list_length('<test_variant>.responses[0].results[0].studies[0].stats', '7')
   - id: variant_stats_delete
     path: /operation/variant/stats/delete
@@ -90,12 +93,12 @@ tests:
     steps:
       - id: variant_stats_delete
         queryParams:
-          study: 1000G
+          study: ${study_id}
         bodyParams:
           cohort: ["DEL"]
         validation:
           results:
-            - opencga_query('/analysis/variant/query?study=validation@population:1000G&limit=1&skip=0', 'test_variant')
+            - opencga_query('/analysis/variant/query?study=${user_id}@${project_id}:${study_id}&limit=1&skip=0', 'test_variant')
             - list_length('<test_variant>.responses[0].results[0].studies[0].stats', '6')
   - id: cohorts_delete
     path: /cohorts/{cohorts}/delete
@@ -107,10 +110,10 @@ tests:
         pathParams:
           cohorts: ${cohort_del}
         queryParams:
-          study: 1000G
+          study: ${study_id}
         validation:
           results:
-            - opencga_query('/cohorts/search?study=validation@population:1000G&id=${cohort_del}&include=id', 'cohort_list')
+            - opencga_query('/cohorts/search?study=${user_id}@${project_id}:${study_id}&id=${cohort_del}&include=id', 'cohort_list')
             - list_length('<cohort_list>.responses[0].results', '0')
   - id: check_cohort_allele_freqs
     path: /analysis/variant/query
@@ -119,7 +122,7 @@ tests:
     steps:
       - id: check_cohort_allele_freqs
         queryParams:
-          study: 1000G
+          study: ${study_id}
           limit: 1000
           exclude: annotation
         validation:
