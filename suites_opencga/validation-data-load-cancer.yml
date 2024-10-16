@@ -1,5 +1,25 @@
-name: validation-data-load
+name: validation-data-load-cancer
+variables:
+  user_id: test
+  project_id: validation2
+  study_id: dataLoad2
 tests:
+  - id: setup
+    path: /operation/variant/setup
+    method: POST
+    async: false
+    steps:
+      - id: variant_setup
+        queryParams:
+          study: ${user_id}@${project_id}:${study_id}
+        bodyParams:
+          expectedSamples: 1
+          expectedFiles: 1
+          fileType: GENOME_VCF
+        validation:
+          results:
+            - compare('responses[0].results[0].options.expected_files_number', '1', 'eq')
+            - compare('responses[0].results[0].options.expected_samples_number', '1', 'eq')
   - id: link
     path: /files/link
     method: POST
@@ -7,7 +27,7 @@ tests:
     steps:
       - id: wgs_cancer_paired_vcf-link-somatic_snv
         queryParams:
-          study: validation:dataLoad
+          study: ${user_id}@${project_id}:${study_id}
         bodyParams:
           uri: /opt/opencga/variants/validation/validation_data_load/HCC1954_vs_HCC1954BL.annot.muts.caveman.vcf.gz
         validation:
@@ -16,7 +36,7 @@ tests:
             - list_equals('responses[0].results[0].sampleIds', '["HCC1954", "HCC1954BL"]', 'False')
       - id: wgs_cancer_paired_vcf-link-somatic_indel
         queryParams:
-          study: validation:dataLoad
+          study: ${user_id}@${project_id}:${study_id}
         bodyParams:
           uri: /opt/opencga/variants/validation/validation_data_load/HCC1954_vs_HCC1954BL.annot.pindel.vcf.gz
         validation:
@@ -25,7 +45,7 @@ tests:
             - list_equals('responses[0].results[0].sampleIds', '["HCC1954", "HCC1954BL"]', 'False')
       - id: wgs_cancer_paired_vcf-link-somatic_sv
         queryParams:
-          study: validation:dataLoad
+          study: ${user_id}@${project_id}:${study_id}
         bodyParams:
           uri: /opt/opencga/variants/validation/validation_data_load/HCC1954_vs_HCC1954BL.annot.brass.vcf.gz
         validation:
@@ -34,7 +54,7 @@ tests:
             - list_equals('responses[0].results[0].sampleIds', '["HCC1954", "HCC1954BL"]', 'False')
       - id: wgs_cancer_paired_vcf-link-somatic_cnv
         queryParams:
-          study: validation:dataLoad
+          study: ${user_id}@${project_id}:${study_id}
         bodyParams:
           uri: /opt/opencga/variants/validation/validation_data_load/HCC1954.copynumber.caveman.vcf.gz
         validation:
@@ -43,7 +63,7 @@ tests:
             - list_equals('responses[0].results[0].sampleIds', '["HCC1954", "HCC1954BL"]', 'False')
       - id: wgs_cancer_paired_vcf-link-germline_snv
         queryParams:
-          study: validation:dataLoad
+          study: ${user_id}@${project_id}:${study_id}
         bodyParams:
           uri: /opt/opencga/variants/validation/validation_data_load/Strelka_HCC1954BL_variants.vcf.gz
         validation:
@@ -52,7 +72,7 @@ tests:
             - list_equals('responses[0].results[0].sampleIds', '["HCC1954BL"]', 'False')
       - id: wgs_cancer_paired_vcf-link-germline_sv
         queryParams:
-          study: validation:dataLoad
+          study: ${user_id}@${project_id}:${study_id}
         bodyParams:
           uri: /opt/opencga/variants/validation/validation_data_load/Manta_HCC1954BL.diploidSV.vcf.gz
         validation:
@@ -66,7 +86,7 @@ tests:
     steps:
       - id: wgs_cancer_paired_vcf-index-somatic_snv
         queryParams:
-          study: validation:dataLoad
+          study: ${user_id}@${project_id}:${study_id}
         bodyParams:
           file: HCC1954_vs_HCC1954BL.annot.muts.caveman.vcf.gz
           somatic: true
@@ -74,11 +94,11 @@ tests:
           loadArchive: no
         validation:
           results:
-            - opencga_query('/files/search?study=validation:dataLoad&name=HCC1954_vs_HCC1954BL.annot.muts.caveman.vcf.gz&include=internal', 'file_info')
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=HCC1954_vs_HCC1954BL.annot.muts.caveman.vcf.gz&include=internal', 'file_info')
             - match('<file_info>.responses[0].results[0].internal.variant.index.status.id', 'READY')
       - id: wgs_cancer_paired_vcf-index-somatic_indel
         queryParams:
-          study: validation:dataLoad
+          study: ${user_id}@${project_id}:${study_id}
         bodyParams:
           file: HCC1954_vs_HCC1954BL.annot.pindel.vcf.gz
           somatic: true
@@ -87,11 +107,11 @@ tests:
           includeGenotypes: no
         validation:
           results:
-            - opencga_query('/files/search?study=validation:dataLoad&name=HCC1954_vs_HCC1954BL.annot.pindel.vcf.gz&include=internal', 'file_info')
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=HCC1954_vs_HCC1954BL.annot.pindel.vcf.gz&include=internal', 'file_info')
             - match('<file_info>.responses[0].results[0].internal.variant.index.status.id', 'READY')
       - id: wgs_cancer_paired_vcf-index-somatic_sv
         queryParams:
-          study: validation:dataLoad
+          study: ${user_id}@${project_id}:${study_id}
         bodyParams:
           file: HCC1954_vs_HCC1954BL.annot.brass.vcf.gz
           somatic: true
@@ -99,11 +119,11 @@ tests:
           loadArchive: no
         validation:
           results:
-            - opencga_query('/files/search?study=validation:dataLoad&name=HCC1954_vs_HCC1954BL.annot.brass.vcf.gz&include=internal', 'file_info')
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=HCC1954_vs_HCC1954BL.annot.brass.vcf.gz&include=internal', 'file_info')
             - match('<file_info>.responses[0].results[0].internal.variant.index.status.id', 'READY')
       - id: wgs_cancer_paired_vcf-index-somatic_cnv
         queryParams:
-          study: validation:dataLoad
+          study: ${user_id}@${project_id}:${study_id}
         bodyParams:
           file: HCC1954.copynumber.caveman.vcf.gz
           somatic: true
@@ -112,22 +132,22 @@ tests:
           includeGenotypes: no
         validation:
           results:
-            - opencga_query('/files/search?study=validation:dataLoad&name=HCC1954.copynumber.caveman.vcf.gz&include=internal', 'file_info')
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=HCC1954.copynumber.caveman.vcf.gz&include=internal', 'file_info')
             - match('<file_info>.responses[0].results[0].internal.variant.index.status.id', 'READY')
       - id: wgs_cancer_paired_vcf-index-germline_snv
         queryParams:
-          study: validation:dataLoad
+          study: ${user_id}@${project_id}:${study_id}
         bodyParams:
           file: Strelka_HCC1954BL_variants.vcf.gz
           loadMultiFileData: true
           loadArchive: no
         validation:
           results:
-            - opencga_query('/files/search?study=validation:dataLoad&name=Strelka_HCC1954BL_variants.vcf.gz&include=internal', 'file_info')
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=Strelka_HCC1954BL_variants.vcf.gz&include=internal', 'file_info')
             - match('<file_info>.responses[0].results[0].internal.variant.index.status.id', 'READY')
       - id: wgs_cancer_paired_vcf-index-germline_sv
         queryParams:
-          study: validation:dataLoad
+          study: ${user_id}@${project_id}:${study_id}
         bodyParams:
           file: Manta_HCC1954BL.diploidSV.vcf.gz
           loadMultiFileData: true
@@ -135,7 +155,7 @@ tests:
           includeGenotypes: no
         validation:
           results:
-            - opencga_query('/files/search?study=validation:dataLoad&name=Manta_HCC1954BL.diploidSV.vcf.gz&include=internal', 'file_info')
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=Manta_HCC1954BL.diploidSV.vcf.gz&include=internal', 'file_info')
             - match('<file_info>.responses[0].results[0].internal.variant.index.status.id', 'READY')
   - id: cellbase_configure
     path: /operation/cellbase/configure
@@ -163,21 +183,21 @@ tests:
     steps:
       - id: wgs_cancer_paired_vcf-annotation
         queryParams:
-          study: validation:dataLoad
+          study: ${user_id}@${project_id}:${study_id}
         bodyParams: {}
         validation:
           results:
-            - opencga_query('/files/search?study=validation:dataLoad&name=HCC1954_vs_HCC1954BL.annot.muts.caveman.vcf.gz&include=internal', 'file_info')
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=HCC1954_vs_HCC1954BL.annot.muts.caveman.vcf.gz&include=internal', 'file_info')
             - match('<file_info>.responses[0].results[0].internal.variant.annotationIndex.status.id', 'READY')
-            - opencga_query('/files/search?study=validation:dataLoad&name=HCC1954_vs_HCC1954BL.annot.pindel.vcf.gz&include=internal', 'file_info')
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=HCC1954_vs_HCC1954BL.annot.pindel.vcf.gz&include=internal', 'file_info')
             - match('<file_info>.responses[0].results[0].internal.variant.annotationIndex.status.id', 'READY')
-            - opencga_query('/files/search?study=validation:dataLoad&name=HCC1954_vs_HCC1954BL.annot.brass.vcf.gz&include=internal', 'file_info')
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=HCC1954_vs_HCC1954BL.annot.brass.vcf.gz&include=internal', 'file_info')
             - match('<file_info>.responses[0].results[0].internal.variant.annotationIndex.status.id', 'READY')
-            - opencga_query('/files/search?study=validation:dataLoad&HCC1954.copynumber.caveman.vcf.gz&include=internal', 'file_info')
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=HCC1954.copynumber.caveman.vcf.gz&include=internal', 'file_info')
             - match('<file_info>.responses[0].results[0].internal.variant.annotationIndex.status.id', 'READY')
-            - opencga_query('/files/search?study=validation:dataLoad&name=Strelka_HCC1954BL_variants.vcf.gz&include=internal', 'file_info')
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=Strelka_HCC1954BL_variants.vcf.gz&include=internal', 'file_info')
             - match('<file_info>.responses[0].results[0].internal.variant.annotationIndex.status.id', 'READY')
-            - opencga_query('/files/search?study=validation:dataLoad&name=Manta_HCC1954BL.diploidSV.vcf.gz&include=internal', 'file_info')
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=Manta_HCC1954BL.diploidSV.vcf.gz&include=internal', 'file_info')
             - match('<file_info>.responses[0].results[0].internal.variant.annotationIndex.status.id', 'READY')
   - id: variant_stats_index
     path: /operation/variant/stats/index
@@ -186,12 +206,12 @@ tests:
     steps:
       - id: wgs_cancer_paired_vcf-variant_stats_index
         queryParams:
-          study: validation:dataLoad
+          study: ${user_id}@${project_id}:${study_id}
         bodyParams:
           cohort: ["ALL"]
         validation:
           results:
-            - opencga_query('/analysis/variant/query?study=validation:dataLoad&limit=1&skip=0', 'test_variant')
+            - opencga_query('/analysis/variant/query?study=${user_id}@${project_id}:${study_id}&limit=1&skip=0', 'test_variant')
             - list_length('<test_variant>.responses[0].results[0].studies[0].stats', '1')
   - id: variant_secondary_annotation_index
     path: /operation/variant/secondary/annotation/index
@@ -200,21 +220,21 @@ tests:
     steps:
       - id: wgs_cancer_paired_vcf-variant_secondary_annotation_index
         queryParams:
-          study: validation:dataLoad
+          study: ${user_id}@${project_id}:${study_id}
         bodyParams: {}
         validation:
           results:
-            - opencga_query('/files/search?study=validation:dataLoad&name=HCC1954_vs_HCC1954BL.annot.muts.caveman.vcf.gz&include=internal', 'file_info')
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=HCC1954_vs_HCC1954BL.annot.muts.caveman.vcf.gz&include=internal', 'file_info')
             - match('<file_info>.responses[0].results[0].internal.variant.secondaryAnnotationIndex.status.id', 'READY')
-            - opencga_query('/files/search?study=validation:dataLoad&name=HCC1954_vs_HCC1954BL.annot.pindel.vcf.gz&include=internal', 'file_info')
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=HCC1954_vs_HCC1954BL.annot.pindel.vcf.gz&include=internal', 'file_info')
             - match('<file_info>.responses[0].results[0].internal.variant.secondaryAnnotationIndex.status.id', 'READY')
-            - opencga_query('/files/search?study=validation:dataLoad&name=HCC1954_vs_HCC1954BL.annot.brass.vcf.gz&include=internal', 'file_info')
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=HCC1954_vs_HCC1954BL.annot.brass.vcf.gz&include=internal', 'file_info')
             - match('<file_info>.responses[0].results[0].internal.variant.secondaryAnnotationIndex.status.id', 'READY')
-            - opencga_query('/files/search?study=validation:dataLoad&name=HCC1954.copynumber.caveman.vcf.gz&include=internal', 'file_info')
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=HCC1954.copynumber.caveman.vcf.gz&include=internal', 'file_info')
             - match('<file_info>.responses[0].results[0].internal.variant.secondaryAnnotationIndex.status.id', 'READY')
-            - opencga_query('/files/search?study=validation:dataLoad&name=Strelka_HCC1954BL_variants.vcf.gz&include=internal', 'file_info')
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=Strelka_HCC1954BL_variants.vcf.gz&include=internal', 'file_info')
             - match('<file_info>.responses[0].results[0].internal.variant.secondaryAnnotationIndex.status.id', 'READY')
-            - opencga_query('/files/search?study=validation:dataLoad&name=Manta_HCC1954BL.diploidSV.vcf.gz&include=internal', 'file_info')
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=Manta_HCC1954BL.diploidSV.vcf.gz&include=internal', 'file_info')
             - match('<file_info>.responses[0].results[0].internal.variant.secondaryAnnotationIndex.status.id', 'READY')
   - id: variant_secondary_sample_index
     path: /operation/variant/secondary/sample/index
@@ -223,15 +243,15 @@ tests:
     steps:
       - id: wgs_cancer_paired_vcf-variant_secondary_sample_index
         queryParams:
-          study: validation:dataLoad
+          study: ${user_id}@${project_id}:${study_id}
         bodyParams:
           sample: ['all']
           overwrite: true
         validation:
           results:
-            - opencga_query('/samples/search?study=validation:dataLoad&id=HCC1954&include=internal', 'sample_info')
+            - opencga_query('/samples/search?study=${user_id}@${project_id}:${study_id}&id=HCC1954&include=internal', 'sample_info')
             - match('<sample_info>.responses[0].results[0].internal.variant.secondarySampleIndex.status.id', 'READY')
-            - opencga_query('/samples/search?study=validation:dataLoad&id=HCC1954BL&include=internal', 'sample_info')
+            - opencga_query('/samples/search?study=${user_id}@${project_id}:${study_id}&id=HCC1954BL&include=internal', 'sample_info')
             - match('<sample_info>.responses[0].results[0].internal.variant.secondarySampleIndex.status.id', 'READY')
   - id: variant_study_delete
     path: /operation/variant/study/delete
@@ -240,21 +260,21 @@ tests:
     steps:
       - id: wgs_cancer_paired_vcf-variant_study_delete
         queryParams:
-          study: validation:dataLoad
+          study: ${user_id}@${project_id}:${study_id}
         bodyParams: {}
         validation:
           results:
-            - opencga_query('/files/search?study=validation:dataLoad&name=HCC1954_vs_HCC1954BL.annot.muts.caveman.vcf.gz&include=internal', 'file_info')
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=HCC1954_vs_HCC1954BL.annot.muts.caveman.vcf.gz&include=internal', 'file_info')
             - match('<file_info>.responses[0].results[0].internal.variant.index.status.id', 'NONE')
-            - opencga_query('/files/search?study=validation:dataLoad&name=HCC1954_vs_HCC1954BL.annot.pindel.vcf.gz&include=internal', 'file_info')
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=HCC1954_vs_HCC1954BL.annot.pindel.vcf.gz&include=internal', 'file_info')
             - match('<file_info>.responses[0].results[0].internal.variant.index.status.id', 'NONE')
-            - opencga_query('/files/search?study=validation:dataLoad&name=HCC1954_vs_HCC1954BL.annot.brass.vcf.gz&include=internal', 'file_info')
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=HCC1954_vs_HCC1954BL.annot.brass.vcf.gz&include=internal', 'file_info')
             - match('<file_info>.responses[0].results[0].internal.variant.index.status.id', 'NONE')
-            - opencga_query('/files/search?study=validation:dataLoad&name=HCC1954.copynumber.caveman.vcf.gz&include=internal', 'file_info')
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=HCC1954.copynumber.caveman.vcf.gz&include=internal', 'file_info')
             - match('<file_info>.responses[0].results[0].internal.variant.index.status.id', 'NONE')
-            - opencga_query('/files/search?study=validation:dataLoad&name=Strelka_HCC1954BL_variants.vcf.gz&include=internal', 'file_info')
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=Strelka_HCC1954BL_variants.vcf.gz&include=internal', 'file_info')
             - match('<file_info>.responses[0].results[0].internal.variant.index.status.id', 'NONE')
-            - opencga_query('/files/search?study=validation:dataLoad&name=Manta_HCC1954BL.diploidSV.vcf.gz&include=internal', 'file_info')
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=Manta_HCC1954BL.diploidSV.vcf.gz&include=internal', 'file_info')
             - match('<file_info>.responses[0].results[0].internal.variant.index.status.id', 'NONE')
   - id: variant_prune
     path: /operation/variant/prune
@@ -266,7 +286,7 @@ tests:
           project: validation
         validation:
           results:
-            - opencga_query('/analysis/variant/query?study=validation:dataLoad&limit=1&skip=0', 'test_variant')
+            - opencga_query('/analysis/variant/query?study=${user_id}@${project_id}:${study_id}&limit=1&skip=0', 'test_variant')
             - is_empty('<test_variant>.responses[0].results')
   - id: unlink
     path: /files/{files}/unlink
@@ -277,53 +297,53 @@ tests:
         pathParams:
           files: HCC1954_vs_HCC1954BL.annot.muts.caveman.vcf.gz
         queryParams:
-          study: validation:dataLoad
+          study: ${user_id}@${project_id}:${study_id}
         validation:
           results:
-            - opencga_query('/files/search?study=validation:dataLoad&name=HCC1954_vs_HCC1954BL.annot.muts.caveman.vcf.gz', 'file_info')
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=HCC1954_vs_HCC1954BL.annot.muts.caveman.vcf.gz', 'file_info')
             - is_empty('<file_info>.responses[0].results')
       - id: wgs_cancer_paired_vcf-unlink-somatic_indel
         pathParams:
           files: HCC1954_vs_HCC1954BL.annot.pindel.vcf.gz
         queryParams:
-          study: validation:dataLoad
+          study: ${user_id}@${project_id}:${study_id}
         validation:
           results:
-            - opencga_query('/files/search?study=validation:dataLoad&name=HCC1954_vs_HCC1954BL.annot.pindel.vcf.gz', 'file_info')
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=HCC1954_vs_HCC1954BL.annot.pindel.vcf.gz', 'file_info')
             - is_empty('<file_info>.responses[0].results')
       - id: wgs_cancer_paired_vcf-unlink-somatic_sv
         pathParams:
           files: HCC1954_vs_HCC1954BL.annot.brass.vcf.gz
         queryParams:
-          study: validation:dataLoad
+          study: ${user_id}@${project_id}:${study_id}
         validation:
           results:
-            - opencga_query('/files/search?study=validation:dataLoad&name=HCC1954_vs_HCC1954BL.annot.brass.vcf.gz', 'file_info')
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=HCC1954_vs_HCC1954BL.annot.brass.vcf.gz', 'file_info')
             - is_empty('<file_info>.responses[0].results')
       - id: wgs_cancer_paired_vcf-unlink-somatic_cnv
         pathParams:
           files: HCC1954.copynumber.caveman.vcf.gz
         queryParams:
-          study: validation:dataLoad
+          study: ${user_id}@${project_id}:${study_id}
         validation:
           results:
-            - opencga_query('/files/search?study=validation:dataLoad&name=HCC1954.copynumber.caveman.vcf.gz', 'file_info')
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=HCC1954.copynumber.caveman.vcf.gz', 'file_info')
             - is_empty('<file_info>.responses[0].results')
       - id: wgs_cancer_paired_vcf-unlink-germline_snv
         pathParams:
           files: Strelka_HCC1954BL_variants.vcf.gz
         queryParams:
-          study: validation:dataLoad
+          study: ${user_id}@${project_id}:${study_id}
         validation:
           results:
-            - opencga_query('/files/search?study=validation:dataLoad&name=Strelka_HCC1954BL_variants.vcf.gz', 'file_info')
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=Strelka_HCC1954BL_variants.vcf.gz', 'file_info')
             - is_empty('<file_info>.responses[0].results')
       - id: wgs_cancer_paired_vcf-unlink-germline_sv
         pathParams:
           files: Manta_HCC1954BL.diploidSV.vcf.gz
         queryParams:
-          study: validation:dataLoad
+          study: ${user_id}@${project_id}:${study_id}
         validation:
           results:
-            - opencga_query('/files/search?study=validation:dataLoad&name=Manta_HCC1954BL.diploidSV.vcf.gz', 'file_info')
+            - opencga_query('/files/search?study=${user_id}@${project_id}:${study_id}&name=Manta_HCC1954BL.diploidSV.vcf.gz', 'file_info')
             - is_empty('<file_info>.responses[0].results')

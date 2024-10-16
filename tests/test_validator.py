@@ -28,7 +28,7 @@ class TestValidator(unittest.TestCase):
             'authentication': {'token': 'login(responses[0].results[0].token)',
                                'url': 'https://mock/url',
                                'headers': {'Accept-Encoding': 'gzip'}, 'method': 'POST',
-                               'bodyParams': {'user': 'test', 'password': 'Test_P4ss'}},
+                               'bodyParams': {'user': 'USER', 'password': 'PASS'}},
             'validation': {'timeDeviation': 5, 'asyncRetryTime': 60, 'ignoreTime': False, 'ignoreHeaders': [],
                            'ignoreResults': [], 'failOnFirst': False}
         }
