@@ -1,9 +1,25 @@
 name: validation-data-load
 variables:
   user_id: test
-  project_id: validation3
-  study_id: dataLoad3
+  project_id: validation
+  study_id: dataLoad
 tests:
+  - id: setup
+    path: /operation/variant/setup
+    method: POST
+    async: false
+    steps:
+      - id: variant_setup
+        queryParams:
+          study: ${user_id}@${project_id}:${study_id}
+        bodyParams:
+          expectedSamples: 1
+          expectedFiles: 1
+          fileType: GENOME_VCF
+        validation:
+          results:
+            - compare('responses[0].results[0].options.expected_files_number', '1', 'eq')
+            - compare('responses[0].results[0].options.expected_samples_number', '1', 'eq')
   - id: link
     path: /files/link
     method: POST

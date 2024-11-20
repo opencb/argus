@@ -37,8 +37,8 @@ class ArgusCLI:
         self._parent_parser.add_argument('-l', '--loglevel', default='INFO',
                                          choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                                          help='provide logging level')
-        self._parent_parser.add_argument('--version', dest='version', action='store_true',
-                                         help='Outputs the current program version')
+        self._parent_parser.add_argument('--version', dest='version', action='version', version=get_argus_version(),
+                                         help='outputs the current program version')
 
     def _execute(self):
         execute_parser = self._subparsers.add_parser('execute', parents=[self._parent_parser])
@@ -90,10 +90,6 @@ def main():
     # Getting arguments
     cli = ArgusCLI()
     args = cli.parser.parse_args()
-
-    # Returning argus version
-    if args.version:
-        sys.stdout.write('Argus version: {}\n'.format(get_argus_version()))
 
     # Setting up logger
     logger = create_logger(args.loglevel)
